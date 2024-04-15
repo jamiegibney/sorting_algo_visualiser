@@ -77,8 +77,6 @@ impl Model {
     }
 
     pub fn draw(&self, draw: &Draw, frame: &Frame) {
-        // TODO(jamiegibney): currently the centre point is always red, but should be the same
-        // colour as the slice. this would require more vertices/indices in the below iterators
         draw.mesh()
             .indexed_colored(
                 (0..NUM_SLICES * 3).map(|i| {
