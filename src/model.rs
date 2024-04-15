@@ -18,6 +18,7 @@ pub struct Model {
 }
 
 impl Model {
+    /// Creates a new app model.
     pub fn new(app: &App) -> Self {
         let window_id = app
             .new_window()
@@ -48,6 +49,8 @@ impl Model {
         s
     }
 
+    /// Scrambles the sorting array.
+    // TODO: integrate this into `Process`, and allow it to be interrupted.
     pub fn scramble_sort_arr(&mut self) {
         if let Ok(mut guard) = self.sorting_arr.lock() {
             let len = guard.len();
@@ -71,11 +74,13 @@ impl Model {
     }
 
     pub fn update(&mut self, app: &App, update: &Update) {
+        // TODO: this is where an interrupt signal should be sent to the processor.
         if let Ok(guard) = self.sorting_arr.lock() {
             self.color_index_arr.copy_from_slice(&guard);
         }
     }
 
+    /// Draws the colour wheel to the current draw instance.
     pub fn draw(&self, draw: &Draw, frame: &Frame) {
         draw.mesh()
             .indexed_colored(
@@ -103,6 +108,7 @@ impl Model {
             .xy(Vec2::ZERO);
     }
 
+    /// Precomputes the positions of all of the circle's vertices.
     fn set_mesh_vertices(&mut self) {
         // this is the centre point which each triangle connects to.
         self.vertex_arr[0] = Vec3::ZERO;
@@ -117,6 +123,7 @@ impl Model {
         }
     }
 
+    /// Precomputes the color array — this is the ordered, constant array of color values.
     fn set_color_array(&mut self) {
         for i in 0..NUM_SLICES {
             let t = i as f32 / NUM_SLICES as f32;
@@ -126,6 +133,8 @@ impl Model {
     }
 }
 
+/// Converts a set of `h` (hue), `s` (saturation), and `l` (luminance) values to an RGB value.
+///
 /// [Source](https://www.rapidtables.com/convert/color/hsl-to-rgb.html)
 #[allow(clippy::many_single_char_names)]
 pub fn hsl_to_rgb(mut h: f32, s: f32, l: f32) -> Rgb<f32> {
@@ -160,6 +169,7 @@ pub fn hsl_to_rgb(mut h: f32, s: f32, l: f32) -> Rgb<f32> {
     }
 }
 
+/// The callback for key-down presses.
 pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
         Key::Space => model.scramble_sort_arr(),
