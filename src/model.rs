@@ -2,7 +2,7 @@ use super::*;
 use nannou::prelude::*;
 use std::f32::consts::{FRAC_PI_2, TAU};
 
-pub const NUM_SLICES: usize = 20;
+pub const NUM_SLICES: usize = 2048;
 pub const CIRCLE_RADIUS: f32 = 300.0;
 
 pub struct Model {
@@ -14,7 +14,7 @@ pub struct Model {
     index_arr: Vec<usize>,
     color_arr: Vec<Rgb<f32>>,
     color_index_arr: Vec<usize>,
-    sorting_arr: SortArray,
+    pub sorting_arr: SortArray,
 }
 
 impl Model {
@@ -22,6 +22,7 @@ impl Model {
         let window_id = app
             .new_window()
             .view(super::view)
+            .key_pressed(key_pressed)
             .size(800, 800)
             .build()
             .expect("failed to initialize main window");
@@ -35,17 +36,73 @@ impl Model {
                 .with_algorithm(SortingAlgorithm::InPlaceRadixLSD4),
 
             vertex_arr: vec![Vec3::ZERO; NUM_SLICES + 1],
-            index_arr: vec![0; NUM_SLICES * 3],
+            index_arr: (0..NUM_SLICES * 3).collect(),
             color_arr: vec![Rgb::new(0.0, 0.0, 0.0); NUM_SLICES],
             color_index_arr: sorting_vec,
             sorting_arr,
         };
 
         s.set_mesh_vertices();
-        s.set_mesh_indices();
         s.set_color_array();
 
         s
+    }
+
+    pub fn scramble_sort_arr(&mut self) {
+        if let Ok(mut guard) = self.sorting_arr.lock() {
+            let len = guard.len();
+            for i in 0..len {
+                let idx_1 = random_range(0, len);
+                let idx_2 = random_range(0, len);
+                guard.swap(idx_1, idx_2);
+            }
+        }
+    }
+
+    pub fn sort_arr(&mut self) {
+        let mut elapsed = 0.0;
+        if let Ok(mut guard) = self.sorting_arr.lock() {
+            let t = std::time::Instant::now();
+            guard.sort_unstable();
+            elapsed = t.elapsed().as_secs_f64() * 1000.0;
+        }
+
+        println!("sort took {elapsed:.6}ms");
+    }
+
+    pub fn update(&mut self, app: &App, update: &Update) {
+        if let Ok(guard) = self.sorting_arr.lock() {
+            self.color_index_arr.copy_from_slice(&guard);
+        }
+    }
+
+    pub fn draw(&self, draw: &Draw, frame: &Frame) {
+        // TODO(jamiegibney): currently the centre point is always red, but should be the same
+        // colour as the slice. this would require more vertices/indices in the below iterators
+        draw.mesh()
+            .indexed_colored(
+                (0..NUM_SLICES * 3).map(|i| {
+                    let color = self.color_arr[self.color_index_arr[i / 3]];
+
+                    if i % 3 == 0 {
+                        (self.vertex_arr[0], color)
+                    }
+                    else if i % 3 == 1 {
+                        (self.vertex_arr[i / 3 + 1], color)
+                    }
+                    else {
+                        let vert_idx = if (i / 3 + 2) > NUM_SLICES {
+                            1
+                        }
+                        else {
+                            i / 3 + 2
+                        };
+                        (self.vertex_arr[vert_idx], color)
+                    }
+                }),
+                self.index_arr.iter().copied(),
+            )
+            .xy(Vec2::ZERO);
     }
 
     fn set_mesh_vertices(&mut self) {
@@ -62,56 +119,12 @@ impl Model {
         }
     }
 
-    fn set_mesh_indices(&mut self) {
-        let get_idx = |mut i: usize| {
-            if i > NUM_SLICES {
-                i -= NUM_SLICES;
-            }
-
-            i
-        };
-
-        for i in 0..NUM_SLICES {
-            self.index_arr[i * 3] = 0;
-            self.index_arr[i * 3 + 1] = get_idx(i + 1);
-            self.index_arr[i * 3 + 2] = get_idx(i + 2);
-        }
-    }
-
     fn set_color_array(&mut self) {
         for i in 0..NUM_SLICES {
             let t = i as f32 / NUM_SLICES as f32;
             let h = t * 360.0;
             self.color_arr[i] = hsl_to_rgb(h, 1.0, 0.5);
         }
-    }
-
-    pub fn update(&mut self, app: &App, update: &Update) {
-        if let Ok(guard) = self.sorting_arr.lock() {
-            self.color_index_arr.copy_from_slice(&guard);
-        }
-    }
-
-    pub fn draw(&self, draw: &Draw, frame: &Frame) {
-        // TODO(jamiegibney): currently the centre point is always red, but should be the same
-        // colour as the slice. this would require more vertices/indices in the below iterators
-        draw.mesh()
-            .indexed_colored(
-                (0..=NUM_SLICES).map(|i| {
-                    if i == 0 {
-                        (self.vertex_arr[0], self.color_arr[0])
-                    }
-                    else {
-                        let vert = self.vertex_arr[i];
-                        let color_idx = self.color_index_arr[i - 1];
-                        let color = self.color_arr[self.color_index_arr[i - 1]];
-
-                        (vert, color)
-                    }
-                }),
-                self.index_arr.iter().copied(),
-            )
-            .xy(Vec2::ZERO);
     }
 }
 
@@ -146,5 +159,13 @@ pub fn hsl_to_rgb(mut h: f32, s: f32, l: f32) -> Rgb<f32> {
     }
     else {
         unreachable!()
+    }
+}
+
+pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
+    match key {
+        Key::Space => model.scramble_sort_arr(),
+        Key::S => model.sort_arr(),
+        _ => {}
     }
 }
