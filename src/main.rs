@@ -9,6 +9,7 @@ pub type SortArray = Arc<Mutex<Vec<usize>>>;
 mod model;
 mod display;
 mod process;
+mod algorithms;
 
 use model::Model;
 use process::*;

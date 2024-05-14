@@ -1,6 +1,7 @@
 #![allow(clippy::suboptimal_flops)]
 
 use super::*;
+use crate::algorithms::SortingAlgorithm;
 use nannou::prelude::*;
 use std::f32::consts::{FRAC_PI_2, TAU};
 
@@ -10,6 +11,9 @@ pub struct Model {
     display: Display,
     sort_arr: SortArray,
     target_arr: Vec<usize>,
+    previous_algo: Option<SortingAlgorithm>,
+
+    resolution: usize,
 }
 
 impl Model {
@@ -29,26 +33,46 @@ impl Model {
             window_id,
             process: Process::new(display.sort_arr_ref()),
             sort_arr: display.sort_arr_ref(),
-            target_arr: (0..NUM_SLICES).collect(),
+            target_arr: (0..DEFAULT_RESOLUTION).collect(),
             display,
+            previous_algo: None,
+
+            resolution: DEFAULT_RESOLUTION,
         }
+    }
+
+    pub fn set_resolution(&mut self, new_resolution: usize) {
+        self.target_arr = (0..new_resolution).collect();
+        self.display.resize(new_resolution);
+        self.resolution = new_resolution;
+
+        println!("Set resolution to {new_resolution} slices");
+    }
+
+    pub fn double_resolution(&mut self) {
+        self.set_resolution((self.resolution * 2).min(MAX_RESOLUTION));
+    }
+
+    pub fn halve_resolution(&mut self) {
+        self.set_resolution((self.resolution / 2).max(3));
     }
 
     /// Updates the app state, i.e. the internal sorting process and
     /// then the display.
     pub fn update(&mut self) {
-        self.process.update();
+        if (self.process.update()) {
+            // let s = if self.is_sorted() { "" } else { "NOT " };
+            // println!("The array is {s}correctly sorted.");
+            if let Some(prev) = self.previous_algo.take() {
+                self.process.set_algorithm(prev);
+            }
+        }
         self.display.update();
     }
 
     /// Draws the color wheel to the provided `Draw` instance.
     pub fn draw(&self, draw: &Draw) {
         self.display.draw(draw);
-    }
-
-    /// Scrambles the color wheel.
-    pub fn scramble(&mut self) {
-        self.display.scramble_sort_arr();
     }
 
     /// Forces the color wheel to be sorted via `std::sort_unstable`.
@@ -66,17 +90,39 @@ impl Model {
 
         false
     }
+
+    pub fn sort(&mut self) {
+        self.process.run();
+    }
+
+    pub fn scramble(&mut self) {
+        if self.process.is_running() {
+            return;
+        }
+
+        self.previous_algo = Some(self.process.current_algorithm);
+        self.process.set_algorithm(SortingAlgorithm::Scramble);
+        self.process.run();
+    }
+
+    pub fn toggle(&mut self) {
+        self.process.toggle();
+    }
 }
 
 /// The callback for key-down presses.
 pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
-        Key::Space => model.scramble(),
+        Key::Space => model.sort(),
+        Key::R => model.scramble(),
         Key::F => model.force_sort(),
+        Key::T => model.toggle(),
         Key::V => {
             let s = if model.is_sorted() { "" } else { "NOT " };
             println!("The array is {s}correctly sorted.");
         }
+        Key::Plus | Key::Equals => model.double_resolution(),
+        Key::Underline | Key::Minus => model.halve_resolution(),
         _ => {}
     }
 }

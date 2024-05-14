@@ -1,10 +1,11 @@
 #![allow(clippy::suboptimal_flops)]
 
 use super::*;
-use nannou::prelude::*;
+use nannou::{draw::background::new, prelude::*};
 use std::f32::consts::{FRAC_PI_2, TAU};
 
-pub const NUM_SLICES: usize = 2048;
+pub const DEFAULT_RESOLUTION: usize = 1024;
+pub const MAX_RESOLUTION: usize = 8192;
 pub const CIRCLE_RADIUS: f32 = 300.0;
 
 /// The color wheel display.
@@ -19,13 +20,13 @@ pub struct Display {
 impl Display {
     /// Creates a new `Display`.
     pub fn new() -> Self {
-        let sort_vec: Vec<usize> = (0..NUM_SLICES).collect();
+        let sort_vec: Vec<usize> = (0..DEFAULT_RESOLUTION).collect();
         let sort_arr = Arc::new(Mutex::new(sort_vec.clone()));
 
         let mut s = Self {
-            vertices: vec![Vec3::ZERO; NUM_SLICES + 1],
-            indices: (0..NUM_SLICES * 3).collect(),
-            colors: vec![Rgb::new(0.0, 0.0, 0.0); NUM_SLICES],
+            vertices: vec![Vec3::ZERO; DEFAULT_RESOLUTION + 1],
+            indices: (0..DEFAULT_RESOLUTION * 3).collect(),
+            colors: vec![Rgb::new(0.0, 0.0, 0.0); DEFAULT_RESOLUTION],
             color_indices: sort_vec,
             sort_arr,
         };
@@ -39,6 +40,22 @@ impl Display {
     /// Returns a reference to the underlying sorting array.
     pub fn sort_arr_ref(&self) -> SortArray {
         Arc::clone(&self.sort_arr)
+    }
+
+    pub fn resize(&mut self, new_resolution: usize) {
+        self.vertices = vec![Vec3::ZERO; new_resolution + 1];
+        self.indices = (0..new_resolution * 3).collect();
+        self.colors = vec![Rgb::new(0.0, 0.0, 0.0); new_resolution];
+        self.color_indices = (0..new_resolution).collect();
+
+        self.set_mesh_vertices();
+        self.set_color_array();
+
+        if let Ok(mut guard) = self.sort_arr.lock() {
+            let curr_size = guard.len();
+            guard.resize(new_resolution, 0);
+            guard.iter_mut().enumerate().for_each(|(i, x)| *x = i);
+        }
     }
 
     /// Scrambles the sorting array.
@@ -72,7 +89,7 @@ impl Display {
     pub fn draw(&self, draw: &Draw) {
         draw.mesh()
             .indexed_colored(
-                (0..NUM_SLICES * 3).map(|i| {
+                (0..self.resolution() * 3).map(|i| {
                     let color = self.colors[self.color_indices[i / 3]];
 
                     if i % 3 == 0 {
@@ -83,7 +100,7 @@ impl Display {
                     }
                     else {
                         let off = i / 3 + 2;
-                        let idx = if off > NUM_SLICES { 1 } else { off };
+                        let idx = if off > self.resolution() { 1 } else { off };
                         (self.vertices[idx], color)
                     }
                 }),
@@ -96,8 +113,8 @@ impl Display {
     fn set_mesh_vertices(&mut self) {
         self.vertices[0] = Vec3::ZERO;
 
-        for i in 0..NUM_SLICES {
-            let theta = (i as f32 / NUM_SLICES as f32) * TAU + FRAC_PI_2;
+        for i in 0..self.resolution() {
+            let theta = (i as f32 / self.resolution() as f32) * TAU + FRAC_PI_2;
             let (y, x) = theta.sin_cos();
 
             self.vertices[i + 1] =
@@ -108,11 +125,15 @@ impl Display {
     /// Precomputes the color array — this is the ordered, constant array
     /// of color values.
     fn set_color_array(&mut self) {
-        for i in 0..NUM_SLICES {
-            let t = i as f32 / NUM_SLICES as f32;
+        for i in 0..self.resolution() {
+            let t = i as f32 / self.resolution() as f32;
             let h = t * 360.0;
             self.colors[i] = hsl_to_rgb(h, 1.0, 0.5);
         }
+    }
+
+    fn resolution(&self) -> usize {
+        self.colors.len()
     }
 }
 
