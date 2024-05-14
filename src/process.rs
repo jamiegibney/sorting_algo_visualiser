@@ -6,6 +6,7 @@ trait SortTiming {
     fn steps_per_second(&mut self) -> usize;
 }
 
+/// A particular sorting algorithm.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum SortingAlgorithm {
     // RADIX
@@ -31,6 +32,7 @@ impl SortTiming for SortingAlgorithm {
 pub struct Process {
     sort_arr: SortArray,
     aux_arr: Vec<usize>,
+
     algorithm_type: SortingAlgorithm,
 }
 
@@ -54,5 +56,8 @@ impl Process {
 
     pub fn set_algorithm(&mut self, algorithm: SortingAlgorithm) {
         self.algorithm_type = algorithm;
+    }
+
+    pub fn update(&mut self) {
     }
 }
