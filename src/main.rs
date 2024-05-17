@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(unused, clippy::wildcard_imports)]
 
 use std::sync::{Arc, Mutex};
 
@@ -7,13 +7,13 @@ pub use nannou::prelude::*;
 pub type SortArray = Arc<Mutex<Vec<usize>>>;
 
 mod model;
-mod display;
+mod color_wheel;
 mod process;
 mod algorithms;
 
 use model::Model;
 use process::*;
-use display::*;
+use color_wheel::*;
 
 fn main() {
     nannou::app(Model::new).update(update).run();

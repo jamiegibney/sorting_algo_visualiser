@@ -9,7 +9,7 @@ pub const MAX_RESOLUTION: usize = 8192;
 pub const CIRCLE_RADIUS: f32 = 300.0;
 
 /// The color wheel display.
-pub struct Display {
+pub struct ColorWheel {
     vertices: Vec<Vec3>,
     indices: Vec<usize>,
     colors: Vec<Rgb<f32>>,
@@ -17,8 +17,8 @@ pub struct Display {
     sort_arr: SortArray,
 }
 
-impl Display {
-    /// Creates a new `Display`.
+impl ColorWheel {
+    /// Creates a new `ColorWheel`.
     pub fn new() -> Self {
         let sort_vec: Vec<usize> = (0..DEFAULT_RESOLUTION).collect();
         let sort_arr = Arc::new(Mutex::new(sort_vec.clone()));

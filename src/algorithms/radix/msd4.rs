@@ -12,8 +12,8 @@ impl SortAlgorithm for RadixMSD4 {
         }
     }
 
-    fn step(&mut self, slice: &mut [usize]) {
-        todo!();
+    fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
+        None
     }
 
     fn steps_per_second(&mut self) -> usize {

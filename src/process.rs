@@ -15,6 +15,8 @@ pub struct Process {
     running: bool,
 
     last: Instant,
+
+    iters_last_update: usize,
 }
 
 impl Process {
@@ -32,6 +34,8 @@ impl Process {
             running: false,
 
             last: Instant::now(),
+
+            iters_last_update: 0,
         }
     }
 
@@ -44,39 +48,58 @@ impl Process {
         self.current_algorithm = algorithm;
     }
 
+    /// Processes the currently-selected algorithm if it can.
+    ///
+    /// Returns `true` if the algorithm has finished sorting *and* the process is running.
     pub fn update(&mut self) -> bool {
         let delta_time = self.last.elapsed().as_secs_f32();
+        self.iters_last_update = 0;
 
         if self.running {
             if self.algorithms.finished(self.current_algorithm) {
+                // if the algorithm has finished and we want to run, reset it before starting
+                // again.
                 self.algorithms.reset(self.current_algorithm);
             }
         }
         else {
+            // if the process isn't running...
             self.last = Instant::now();
             return false;
         }
 
+        // progress the algorithm...
         if let Ok(mut guard) = self.sort_arr.lock() {
-            self.algorithms.progress(
+            let output = self.algorithms.progress(
                 self.current_algorithm,
                 delta_time,
                 guard.as_mut_slice(),
             );
+
+            if let Some(output) = output {
+                self.iters_last_update = output.num_iters();
+                // send average_pos message here...
+            }
         }
 
+        // if we've just sorted the slice...
         if self.algorithms.finished(self.current_algorithm) {
             self.stop();
             self.last = Instant::now();
             return true;
         }
 
+        // if the slice has yet to be sorted...
         self.last = Instant::now();
         false
     }
 
     pub const fn is_running(&self) -> bool {
         self.running
+    }
+
+    pub const fn iters_last_update(&self) -> usize {
+        self.iters_last_update
     }
 
     pub fn toggle(&mut self) {
