@@ -3,7 +3,9 @@
 use super::*;
 use crate::algorithms::SortingAlgorithm;
 use nannou::prelude::*;
+use nannou_audio::Stream;
 use std::f32::consts::{FRAC_PI_2, TAU};
+use std::sync::mpsc::channel;
 
 pub struct Model {
     window_id: WindowId,
@@ -13,6 +15,7 @@ pub struct Model {
     target_arr: Vec<usize>,
     previous_algo: Option<SortingAlgorithm>,
 
+    audio_stream: Stream<Audio>,
     resolution: usize,
 
     num_iters: usize,
@@ -30,11 +33,19 @@ impl Model {
             .expect("failed to initialize main window");
 
         let display = ColorWheel::new();
+        let (note_tx, note_rx) = channel();
+
+        let audio_model = Audio::new(note_rx);
+        let audio_callback_timer = Arc::clone(audio_model.callback_timer());
 
         Self {
             window_id,
-            process: Process::new(display.sort_arr_ref())
-                .with_algorithm(SortingAlgorithm::Selection),
+            process: Process::new(
+                display.sort_arr_ref(),
+                note_tx,
+                audio_callback_timer,
+            )
+            .with_algorithm(SortingAlgorithm::Bubble),
             previous_algo: None,
 
             sort_arr: display.sort_arr_ref(),
@@ -43,6 +54,7 @@ impl Model {
             color_wheel: display,
             resolution: DEFAULT_RESOLUTION,
 
+            audio_stream: audio_model.into_stream(),
             num_iters: 0,
         }
     }
@@ -63,6 +75,14 @@ impl Model {
         self.set_resolution((self.resolution / 2).max(3));
     }
 
+    pub fn next_algorithm(&mut self) {
+        self.process.current_algorithm.next();
+        println!(
+            "Switching sorting algorithm to {}",
+            self.process.current_algorithm
+        );
+    }
+
     /// Updates the app state, i.e. the internal sorting process and then the color wheel.
     pub fn update(&mut self) {
         let sorted = self.process.update();
@@ -75,7 +95,7 @@ impl Model {
             ) {
                 let not = if self.is_sorted() { "" } else { "NOT " };
                 println!(
-                    "Done in ~{} iterations. The array is {not}correctly sorted.",
+                    "Done in {} iterations. The array is {not}correctly sorted.",
                     self.num_iters
                 );
             }
@@ -157,6 +177,7 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
             let s = if model.is_sorted() { "" } else { "NOT " };
             println!("The array is {s}correctly sorted.");
         }
+        Key::Return => model.next_algorithm(),
         Key::Plus | Key::Equals => model.double_resolution(),
         Key::Underline | Key::Minus => model.halve_resolution(),
         _ => {}

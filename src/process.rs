@@ -1,7 +1,10 @@
 use super::algorithms::*;
 use super::*;
-use std::sync::{Arc, Mutex};
+use atomic::Atomic;
+use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::time::Instant;
+
+const NOTE_POST_TIME: f32 = 0.010;
 
 /// The sorting algorithm process.
 #[derive(Debug)]
@@ -13,14 +16,21 @@ pub struct Process {
     pub current_algorithm: SortingAlgorithm,
 
     running: bool,
-
     last: Instant,
 
     iters_last_update: usize,
+
+    note_sender: Sender<NoteEvent>,
+    audio_callback_timer: Arc<Atomic<InstantTime>>,
+    note_post_timer: f32,
 }
 
 impl Process {
-    pub fn new(sort_arr: SortArray) -> Self {
+    pub fn new(
+        sort_arr: SortArray,
+        note_sender: Sender<NoteEvent>,
+        audio_callback_timer: Arc<Atomic<InstantTime>>,
+    ) -> Self {
         let len = sort_arr.lock().unwrap().len();
 
         Self {
@@ -32,10 +42,13 @@ impl Process {
             current_algorithm: SortingAlgorithm::default(),
 
             running: false,
-
             last: Instant::now(),
 
             iters_last_update: 0,
+
+            note_sender,
+            audio_callback_timer,
+            note_post_timer: 0.0,
         }
     }
 
@@ -53,6 +66,7 @@ impl Process {
     /// Returns `true` if the algorithm has finished sorting *and* the process is running.
     pub fn update(&mut self) -> bool {
         let delta_time = self.last.elapsed().as_secs_f32();
+        self.note_post_timer += delta_time;
         self.iters_last_update = 0;
 
         if self.running {
@@ -78,7 +92,15 @@ impl Process {
 
             if let Some(output) = output {
                 self.iters_last_update = output.num_iters();
-                // send average_pos message here...
+
+                if self.note_post_timer >= NOTE_POST_TIME {
+                    self.note_sender.send(NoteEvent::new(
+                        output.average_pos(),
+                        self.buffer_sample_offset(),
+                    ));
+
+                    self.note_post_timer -= NOTE_POST_TIME;
+                }
             }
         }
 
@@ -108,9 +130,23 @@ impl Process {
 
     pub fn run(&mut self) {
         self.running = true;
+        self.note_post_timer = 0.0;
     }
 
     pub fn stop(&mut self) {
         self.running = false;
+    }
+
+    fn buffer_sample_offset(&self) -> u32 {
+        use std::sync::atomic::Ordering::Relaxed;
+
+        let samples_exact = self
+            .audio_callback_timer
+            .load(Relaxed)
+            .elapsed()
+            .as_secs_f32()
+            * SAMPLE_RATE as f32;
+
+        samples_exact.round() as u32 % BUFFER_SIZE as u32
     }
 }

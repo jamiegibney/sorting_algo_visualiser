@@ -6,7 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+atomic = "0.6.0"
+bytemuck = "1.16.0"
 nannou = "0.19.0"
+nannou_audio = "0.19.0"
 
 [profile.dev]
 debug = "line-tables-only"

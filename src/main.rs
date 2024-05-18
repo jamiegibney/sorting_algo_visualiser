@@ -2,20 +2,56 @@
 
 use std::sync::{Arc, Mutex};
 
-pub use nannou::prelude::*;
+use nannou::prelude::*;
+use nannou_audio;
 
 pub type SortArray = Arc<Mutex<Vec<usize>>>;
 
-mod model;
-mod color_wheel;
-mod process;
 mod algorithms;
+mod audio;
+mod color_wheel;
+mod message;
+mod model;
+mod process;
 
+use audio::*;
+use color_wheel::*;
+use message::NoteEvent;
 use model::Model;
 use process::*;
-use color_wheel::*;
+
+fn generate_envelope_data() {
+    let sr = 48000.0;
+    let attack_len = 0.002;
+    let release_len = 0.7;
+
+    let attack = (attack_len * sr).round() as usize;
+    let release = (release_len * sr).round() as usize;
+
+    let mut start = vec![0.0; attack];
+    let mut end = vec![0.0; release];
+
+    for i in 0..attack {
+        let x = i as f32 / attack as f32;
+        start[i] = x.clamp(0.0, 1.0);
+    }
+    for i in 0..release {
+        let x = (release - i) as f32 / release as f32;
+        end[i] = x.clamp(0.0, 1.0);
+    }
+
+    start.append(&mut end);
+
+    std::fs::write("src/audio/envelope_data", unsafe {
+        std::slice::from_raw_parts(
+            start.as_ptr().cast::<u8>(),
+            start.len() * std::mem::size_of::<f32>(),
+        )
+    });
+}
 
 fn main() {
+    // generate_envelope_data();
     nannou::app(Model::new).update(update).run();
 }
 

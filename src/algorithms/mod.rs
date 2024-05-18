@@ -5,11 +5,13 @@ use std::fmt::Debug;
 use SortingAlgorithm as SA;
 
 mod bogo;
+mod bubble;
 mod radix;
 mod scramble;
 mod selection;
 
 use bogo::Bogo;
+use bubble::Bubble;
 use radix::*;
 use scramble::Scramble;
 use selection::Selection;
@@ -85,14 +87,14 @@ impl AlgorithmOutput {
             average_pos += step.interp_in_slice(slice);
         }
 
-        Self { num_iters, average_pos }
+        Self { num_iters, average_pos: average_pos / steps.len() as f32 }
     }
 
-    pub fn num_iters(&self) -> usize {
+    pub const fn num_iters(&self) -> usize {
         self.num_iters
     }
 
-    pub fn average_pos(&self) -> f32 {
+    pub const fn average_pos(&self) -> f32 {
         self.average_pos
     }
 }
@@ -109,6 +111,7 @@ pub enum SortingAlgorithm {
     RadixMSD10,
 
     Bogo,
+    Bubble,
     Selection,
 
     #[default]
@@ -126,9 +129,25 @@ impl SortingAlgorithm {
             Self::RadixMSD10 => 100,
 
             Self::Bogo => 20000,
+            Self::Bubble => 150,
             Self::Selection => 150,
 
             Self::Scramble => 1500,
+        }
+    }
+
+    pub fn next(&mut self) {
+        match self {
+            Self::RadixLSD4 => *self = Self::RadixLSD10,
+            Self::RadixLSD10 => *self = Self::InPlaceRadixLSD4,
+            Self::InPlaceRadixLSD4 => *self = Self::InPlaceRadixLSD10,
+            Self::InPlaceRadixLSD10 => *self = Self::RadixMSD4,
+            Self::RadixMSD4 => *self = Self::RadixMSD10,
+            Self::RadixMSD10 => *self = Self::Bogo,
+            Self::Bogo => *self = Self::Bubble,
+            Self::Bubble => *self = Self::Selection,
+            Self::Selection => *self = Self::RadixLSD4,
+            Self::Scramble => *self = Self::Scramble,
         }
     }
 }
@@ -148,6 +167,7 @@ impl std::fmt::Display for SortingAlgorithm {
             SA::RadixMSD4 => f.write_str("MSD Radix sort, Base 4"),
             SA::RadixMSD10 => f.write_str("MSD Radix sort, Base 10"),
             SA::Bogo => f.write_str("Bogosort"),
+            SA::Bubble => f.write_str("Bubble sort"),
             SA::Selection => f.write_str("Selection sort"),
             SA::Scramble => f.write_str("Randomisation"),
         }
@@ -164,6 +184,7 @@ pub struct Algorithms {
     radix_msd10: RadixMSD10,
 
     bogo: Bogo,
+    bubble: Bubble,
     selection: Selection,
 
     scramble: Scramble,
@@ -180,6 +201,7 @@ impl Algorithms {
             radix_msd10: RadixMSD10::new(),
 
             bogo: Bogo::new(),
+            bubble: Bubble::new(),
             selection: Selection::new(),
 
             scramble: Scramble::new(),
@@ -205,6 +227,7 @@ impl Algorithms {
             SA::RadixMSD10 => self.radix_msd10.progress(delta_time, slice),
 
             SA::Bogo => self.bogo.progress(delta_time, slice),
+            SA::Bubble => self.bubble.progress(delta_time, slice),
             SA::Selection => self.selection.progress(delta_time, slice),
 
             SA::Scramble => self.scramble.progress(delta_time, slice),
@@ -221,6 +244,7 @@ impl Algorithms {
             SA::RadixMSD10 => self.radix_msd10.step(slice),
 
             SA::Bogo => self.bogo.step(slice),
+            SA::Bubble => self.bubble.step(slice),
             SA::Selection => self.selection.step(slice),
 
             SA::Scramble => self.scramble.step(slice),
@@ -237,6 +261,7 @@ impl Algorithms {
             SA::RadixMSD10 => self.radix_msd10.finished(),
 
             SA::Bogo => self.bogo.finished(),
+            SA::Bubble => self.bubble.finished(),
             SA::Selection => self.selection.finished(),
 
             SA::Scramble => self.scramble.finished(),
@@ -253,6 +278,7 @@ impl Algorithms {
             SA::RadixMSD10 => self.radix_msd10.reset(),
 
             SA::Bogo => self.bogo.reset(),
+            SA::Bubble => self.bubble.reset(),
             SA::Selection => self.selection.reset(),
 
             SA::Scramble => self.scramble.reset(),
