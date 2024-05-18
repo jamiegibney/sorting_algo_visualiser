@@ -2,6 +2,7 @@ use super::*;
 use envelope::AmpEnvelope;
 use nannou_audio::Buffer;
 use sine::SineOsc;
+use tri::TriOsc;
 
 /// The maximum number of polyphonic audio voices.
 pub const NUM_VOICES: usize = 64;
@@ -10,16 +11,16 @@ const ENVELOPE_LENGTH: f32 = 1.0;
 
 /// A single voice.
 #[derive(Debug)]
-struct Voice {
+struct Voice<O: Oscillator = SineOsc> {
     id: u64,
     sample_rate: f32,
-    osc: SineOsc,
+    osc: O,
     freq: f32,
     envelope: AmpEnvelope,
     pan: f32,
 }
 
-impl Voice {
+impl<O: Oscillator> Voice<O> {
     /// Sets the frequency of the voice.
     pub fn set_frequency(&mut self, new_freq: f32) {
         self.freq = new_freq;
@@ -183,16 +184,14 @@ impl VoiceHandler {
 
     /// Returns a new voice.
     fn create_voice(&mut self, freq: f32) -> Voice {
-        let v = Voice {
+        Voice {
             id: self.next_voice_id(),
             sample_rate: self.sample_rate,
             osc: SineOsc::new(freq, self.sample_rate),
             freq,
             envelope: AmpEnvelope::new(),
             pan: nannou::rand::random_f32() * 2.0,
-        };
-
-        v
+        }
     }
 
     /// Gets the next voice ID.

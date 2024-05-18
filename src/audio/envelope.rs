@@ -1,6 +1,6 @@
 use super::*;
 
-static ENVELOPE_BYTES: &[u8; 134784] = include_bytes!("envelope_data");
+static ENVELOPE_BYTES: &[u8; 173184] = include_bytes!("envelope_data");
 
 /// A simple ramp amplitude envelope.
 #[derive(Debug)]

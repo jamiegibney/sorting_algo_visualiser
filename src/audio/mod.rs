@@ -9,16 +9,27 @@ mod effects;
 mod envelope;
 mod process;
 mod sine;
+mod tri;
 mod voice;
 
 use effects::*;
 use voice::VoiceHandler;
+
+pub const MAJ_PENTATONIC: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
+pub const MIN_PENTATONIC: [f32; 5] = [0.0, 3.0, 5.0, 7.0, 10.0];
 
 /// The default sample rate.
 pub const SAMPLE_RATE: u32 = 48000;
 /// The default buffer size.
 pub const BUFFER_SIZE: usize = 1 << 8; // 256
 
+/// Trait for oscillators.
+pub trait Oscillator: std::fmt::Debug {
+    fn set_frequency(&mut self, freq_hz: f32, sample_rate: f32);
+    fn tick(&mut self) -> f32;
+}
+
+/// An atomic-compatible wrapper around an `Instant`.
 #[derive(Debug, Clone, Copy)]
 pub struct InstantTime(Instant);
 
@@ -67,11 +78,14 @@ impl Audio {
 
     /// Maps an average sorting position to frequency in Hz.
     pub fn map_pos_to_freq(average_pos: f32) -> f32 {
-        const MIN_FREQ: f32 = 80.0;
-        const MAX_FREQ: f32 = 1300.0;
-        let x = average_pos.clamp(0.0, 1.0).powi(4);
+        const MIN_NOTE: f32 = 40.0;
+        const MAX_NOTE: f32 = 90.0;
 
-        (MAX_FREQ - MIN_FREQ).mul_add(x, MIN_FREQ)
+        let x = average_pos.clamp(0.0, 1.0);
+        let note = (MAX_NOTE - MIN_NOTE).mul_add(x, MIN_NOTE).round();
+        let quantized = Self::quantize_to_scale(&MAJ_PENTATONIC, note, 69.0);
+
+        Self::note_to_freq(quantized)
     }
 
     /// Converts the `AudioModel` into a CPAL audio stream.
@@ -91,5 +105,36 @@ impl Audio {
         stream.play().unwrap();
 
         stream
+    }
+
+    /// Calculates the frequency value of the provided MIDI note value, relative to 440 Hz.
+    #[inline]
+    pub fn note_to_freq(note_value: f32) -> f32 {
+        const TUNING_FREQ_HZ: f32 = 440.0;
+
+        ((note_value - 69.0) / 12.0).exp2() * TUNING_FREQ_HZ
+    }
+
+    pub fn quantize_to_scale(scale: &[f32], note: f32, root: f32) -> f32 {
+        let mut lower = root;
+
+        while !(lower..=(lower + 12.0)).contains(&note) {
+            lower += if note > lower { 12.0 } else { -12.0 };
+        }
+
+        let mut min = f32::MAX;
+        let mut idx = 0;
+
+        for (i, &int) in scale.iter().enumerate() {
+            let cur = lower + int;
+            let val = (note - cur).abs();
+
+            if val < min {
+                min = val;
+                idx = i;
+            }
+        }
+
+        lower + scale[idx]
     }
 }

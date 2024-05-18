@@ -1,4 +1,4 @@
-//! A sine wave oscillator.
+use super::*;
 use std::f32::consts::TAU;
 
 /// A simple sine wave oscillator.
@@ -11,20 +11,20 @@ pub struct SineOsc {
 impl SineOsc {
     /// Creates a new sine wave oscillator at `freq_hz` Hz.
     pub fn new(freq_hz: f32, sample_rate: f32) -> Self {
-        // println!(
-        //     "creating new sine oscillator at {freq_hz} hz (phase increment: {})",
-        //     freq_hz / sample_rate
-        // );
+        debug_assert!(0.0 < freq_hz && freq_hz <= sample_rate * 0.5);
+
         Self { inc: freq_hz / sample_rate, phase: 0.0 }
     }
+}
 
+impl Oscillator for SineOsc {
     /// Sets the frequency of the oscillator.
-    pub fn set_frequency(&mut self, new_freq: f32, sample_rate: f32) {
+    fn set_frequency(&mut self, new_freq: f32, sample_rate: f32) {
         self.inc = new_freq / sample_rate;
     }
 
     /// Returns the next sample from the oscillator, updating its state.
-    pub fn tick(&mut self) -> f32 {
+    fn tick(&mut self) -> f32 {
         let output = (self.phase * TAU).sin();
         self.phase = (self.phase + self.inc).fract();
 
