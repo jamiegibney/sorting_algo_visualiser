@@ -11,7 +11,7 @@ pub struct AmpEnvelope {
 
 impl AmpEnvelope {
     /// Creates a new envelope.
-    pub fn with_length(sample_rate: f32) -> Self {
+    pub fn new() -> Self {
         let f32_size = std::mem::size_of::<f32>();
 
         Self {
