@@ -7,11 +7,13 @@ pub struct Bubble {
     finished: bool,
 }
 
-impl SortAlgorithm for Bubble {
-    fn new() -> Self {
+impl Bubble {
+    pub fn new() -> Self {
         Self { current_idx: 0, swapped: false, finished: false }
     }
+}
 
+impl SortAlgorithm for Bubble {
     fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
         if self.finished {
             return None;

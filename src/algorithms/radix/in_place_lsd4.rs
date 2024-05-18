@@ -5,13 +5,13 @@ pub struct InPlaceRadixLSD4 {
     //
 }
 
-impl SortAlgorithm for InPlaceRadixLSD4 {
-    fn new() -> Self {
-        Self {
-            //
-        }
+impl InPlaceRadixLSD4 {
+    pub fn new() -> Self {
+        Self {}
     }
+}
 
+impl SortAlgorithm for InPlaceRadixLSD4 {
     fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
         None
     }

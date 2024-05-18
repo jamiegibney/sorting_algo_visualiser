@@ -17,6 +17,20 @@ pub struct Scramble {
 impl Scramble {
     const ITERS_PER_STEP: usize = 12;
 
+    pub fn new() -> Self {
+        Self {
+            has_initialized: false,
+
+            window_start: 0,
+            window_size: 0,
+
+            iter: 0,
+            step_size: 0,
+
+            finished: false,
+        }
+    }
+
     fn reset(&mut self) {
         self.has_initialized = false;
 
@@ -52,20 +66,6 @@ impl Scramble {
 }
 
 impl SortAlgorithm for Scramble {
-    fn new() -> Self {
-        Self {
-            has_initialized: false,
-
-            window_start: 0,
-            window_size: 0,
-
-            iter: 0,
-            step_size: 0,
-
-            finished: false,
-        }
-    }
-
     fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
         let len = slice.len();
         let mut indices = Vec::with_capacity(Self::ITERS_PER_STEP * 2);

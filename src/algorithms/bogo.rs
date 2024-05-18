@@ -8,6 +8,10 @@ pub struct Bogo {
 }
 
 impl Bogo {
+    pub fn new() -> Self {
+        Self { finished: false }
+    }
+
     fn is_sorted(&self, slice: &[usize]) -> bool {
         for win in slice.windows(2) {
             if win[0] > win[1] {
@@ -20,10 +24,6 @@ impl Bogo {
 }
 
 impl SortAlgorithm for Bogo {
-    fn new() -> Self {
-        Self { finished: false }
-    }
-
     fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
         if self.is_sorted(slice) {
             self.finished = true;

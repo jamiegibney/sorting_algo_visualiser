@@ -7,11 +7,13 @@ pub struct Selection {
     finished: bool,
 }
 
-impl SortAlgorithm for Selection {
-    fn new() -> Self {
+impl Selection {
+    pub fn new() -> Self {
         Self { current_idx: 0, finished: false }
     }
+}
 
+impl SortAlgorithm for Selection {
     fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
         // avoids index out of bounds error
         if self.finished {

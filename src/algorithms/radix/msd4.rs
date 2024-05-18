@@ -5,13 +5,13 @@ pub struct RadixMSD4 {
     //
 }
 
-impl SortAlgorithm for RadixMSD4 {
-    fn new() -> Self {
-        Self {
-            //
-        }
+impl RadixMSD4 {
+    pub fn new() -> Self {
+        Self {}
     }
+}
 
+impl SortAlgorithm for RadixMSD4 {
     fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
         None
     }
