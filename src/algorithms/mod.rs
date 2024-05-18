@@ -19,9 +19,6 @@ use scramble::Scramble;
 use selection::Selection;
 
 pub trait SortAlgorithm: Debug {
-    /// Creates a new algorithm.
-    // fn new() -> Self;
-
     /// A single sorting step.
     fn step(&mut self, arr: &mut SortArray);
     /// The target number of steps per second for this algorithm.
