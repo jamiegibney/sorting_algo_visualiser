@@ -188,9 +188,7 @@ impl VoiceHandler {
             sample_rate: self.sample_rate,
             osc: SineOsc::new(freq, self.sample_rate),
             freq,
-            envelope: AmpEnvelope::with_length(
-                ENVELOPE_LENGTH, self.sample_rate,
-            ),
+            envelope: AmpEnvelope::new(),
             pan: nannou::rand::random_f32() * 2.0,
         };
 
