@@ -181,9 +181,17 @@ pub struct Algorithms {
 
 impl Algorithms {
     pub fn new() -> Self {
-        let arr: [(SA, Box<dyn SortAlgorithm>); 2] = [
+        let arr: [(SA, Box<dyn SortAlgorithm>); 10] = [
+            (SA::RadixLSD4, Box::new(RadixLSD4::new())),
+            (SA::RadixLSD10, Box::new(RadixLSD10::new())),
+            (SA::InPlaceRadixLSD4, Box::new(InPlaceRadixLSD4::new())),
+            (SA::InPlaceRadixLSD10, Box::new(InPlaceRadixLSD10::new())),
+            (SA::RadixMSD4, Box::new(RadixMSD4::new())),
+            (SA::RadixMSD10, Box::new(RadixMSD10::new())),
             (SA::Bogo, Box::new(Bogo::new())),
             (SA::Bubble, Box::new(Bubble::new())),
+            (SA::Selection, Box::new(Selection::new())),
+            (SA::Scramble, Box::new(Scramble::new())),
         ];
 
         Self { algos: HashMap::from(arr) }
