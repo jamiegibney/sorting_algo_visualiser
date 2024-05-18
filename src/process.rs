@@ -10,7 +10,6 @@ const NOTE_POST_TIME: f32 = 0.010;
 #[derive(Debug)]
 pub struct Process {
     sort_arr: SortArray,
-    aux_arr: Vec<usize>,
 
     algorithms: Algorithms,
     pub current_algorithm: SortingAlgorithm,
@@ -31,14 +30,10 @@ impl Process {
         note_sender: Sender<NoteEvent>,
         audio_callback_timer: Arc<Atomic<InstantTime>>,
     ) -> Self {
-        let len = sort_arr.lock().unwrap().len();
-
         Self {
             sort_arr,
-            aux_arr: Vec::with_capacity(len),
 
             algorithms: Algorithms::new(),
-
             current_algorithm: SortingAlgorithm::default(),
 
             running: false,
@@ -68,6 +63,7 @@ impl Process {
         let delta_time = self.last.elapsed().as_secs_f32();
         self.note_post_timer += delta_time;
         self.iters_last_update = 0;
+        self.last = Instant::now();
 
         if self.running {
             if self.algorithms.finished(self.current_algorithm) {
@@ -78,7 +74,6 @@ impl Process {
         }
         else {
             // if the process isn't running...
-            self.last = Instant::now();
             return false;
         }
 
@@ -107,12 +102,10 @@ impl Process {
         // if we've just sorted the slice...
         if self.algorithms.finished(self.current_algorithm) {
             self.stop();
-            self.last = Instant::now();
             return true;
         }
 
         // if the slice has yet to be sorted...
-        self.last = Instant::now();
         false
     }
 
