@@ -14,21 +14,16 @@ pub struct ColorWheel {
     indices: Vec<usize>,
     colors: Vec<Rgb<f32>>,
     color_indices: Vec<usize>,
-    sort_arr: SortArray,
 }
 
 impl ColorWheel {
     /// Creates a new `ColorWheel`.
     pub fn new() -> Self {
-        let sort_vec: Vec<usize> = (0..DEFAULT_RESOLUTION).collect();
-        let sort_arr = Arc::new(Mutex::new(sort_vec.clone()));
-
         let mut s = Self {
             vertices: vec![Vec3::ZERO; DEFAULT_RESOLUTION + 1],
             indices: (0..DEFAULT_RESOLUTION * 3).collect(),
             colors: vec![Rgb::new(0.0, 0.0, 0.0); DEFAULT_RESOLUTION],
-            color_indices: sort_vec,
-            sort_arr,
+            color_indices: (0..DEFAULT_RESOLUTION).collect(),
         };
 
         s.set_mesh_vertices();
@@ -37,11 +32,7 @@ impl ColorWheel {
         s
     }
 
-    /// Returns a reference to the underlying sorting array.
-    pub fn sort_arr_ref(&self) -> SortArray {
-        Arc::clone(&self.sort_arr)
-    }
-
+    /// Resizes the color wheel.
     pub fn resize(&mut self, new_resolution: usize) {
         self.vertices = vec![Vec3::ZERO; new_resolution + 1];
         self.indices = (0..new_resolution * 3).collect();
@@ -50,39 +41,12 @@ impl ColorWheel {
 
         self.set_mesh_vertices();
         self.set_color_array();
-
-        if let Ok(mut guard) = self.sort_arr.lock() {
-            let curr_size = guard.len();
-            guard.resize(new_resolution, 0);
-            guard.iter_mut().enumerate().for_each(|(i, x)| *x = i);
-        }
-    }
-
-    /// Scrambles the sorting array.
-    pub fn scramble_sort_arr(&mut self) {
-        if let Ok(mut guard) = self.sort_arr.lock() {
-            let len = guard.len();
-            for i in 0..len {
-                let idx_1 = random_range(0, len);
-                let idx_2 = random_range(0, len);
-                guard.swap(idx_1, idx_2);
-            }
-        }
-    }
-
-    /// Sorts the array via `std::sort_unstable`.
-    pub fn sort(&mut self) {
-        if let Ok(mut guard) = self.sort_arr.lock() {
-            guard.sort_unstable();
-        }
     }
 
     /// Updates the color wheel from the sorting array (see
     /// [`Self::sort_arr_ref`]).
-    pub fn update(&mut self) {
-        if let Ok(guard) = self.sort_arr.lock() {
-            self.color_indices.copy_from_slice(&guard);
-        }
+    pub fn update(&mut self, arr: &[usize]) {
+        self.color_indices.copy_from_slice(arr);
     }
 
     /// Draws the color wheel to the provided `Draw` instance.

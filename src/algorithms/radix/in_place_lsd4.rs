@@ -12,8 +12,8 @@ impl InPlaceRadixLSD4 {
 }
 
 impl SortAlgorithm for InPlaceRadixLSD4 {
-    fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
-        None
+    fn step(&mut self, slice: &mut SortArray) {
+        todo!()
     }
 
     fn steps_per_second(&mut self) -> usize {

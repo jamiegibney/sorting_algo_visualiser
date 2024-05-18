@@ -9,9 +9,11 @@ use std::sync::mpsc::channel;
 
 pub struct Model {
     window_id: WindowId,
+
     process: Process,
     color_wheel: ColorWheel,
     sort_arr: SortArray,
+
     target_arr: Vec<usize>,
     previous_algo: Option<SortingAlgorithm>,
 
@@ -27,6 +29,7 @@ impl Model {
         let window_id = app
             .new_window()
             .view(super::view)
+            .title("Sorting Algorithms")
             .key_pressed(key_pressed)
             .size(800, 800)
             .build()
@@ -40,18 +43,19 @@ impl Model {
 
         Self {
             window_id,
+
             process: Process::new(
-                display.sort_arr_ref(),
                 note_tx,
                 audio_callback_timer,
             )
             .with_algorithm(SortingAlgorithm::Bubble),
+            color_wheel: display,
+            sort_arr: SortArray::with_size(DEFAULT_RESOLUTION),
+
             previous_algo: None,
 
-            sort_arr: display.sort_arr_ref(),
             target_arr: (0..DEFAULT_RESOLUTION).collect(),
 
-            color_wheel: display,
             resolution: DEFAULT_RESOLUTION,
 
             audio_stream: audio_model.into_stream(),
@@ -61,6 +65,7 @@ impl Model {
 
     pub fn set_resolution(&mut self, new_resolution: usize) {
         self.target_arr = (0..new_resolution).collect();
+        self.sort_arr.resize(new_resolution);
         self.color_wheel.resize(new_resolution);
         self.resolution = new_resolution;
 
@@ -85,7 +90,7 @@ impl Model {
 
     /// Updates the app state, i.e. the internal sorting process and then the color wheel.
     pub fn update(&mut self) {
-        let sorted = self.process.update();
+        let sorted = self.process.update(&mut self.sort_arr);
         self.num_iters += self.process.iters_last_update();
 
         if sorted {
@@ -107,7 +112,7 @@ impl Model {
             }
         }
 
-        self.color_wheel.update();
+        self.color_wheel.update(self.sort_arr.as_slice());
     }
 
     /// Draws the color wheel to the provided `Draw` instance.
@@ -117,19 +122,12 @@ impl Model {
 
     /// Forces the color wheel to be sorted via `std::sort_unstable`.
     pub fn force_sort(&mut self) {
-        self.color_wheel.sort();
-        self.color_wheel.update();
+        self.sort_arr.force_sort();
     }
 
     /// Returns `true` if the sorting array is correctly sorted.
     pub fn is_sorted(&self) -> bool {
-        if let Ok(guard) = self.sort_arr.lock() {
-            if guard.as_slice() == self.target_arr {
-                return true;
-            }
-        }
-
-        false
+        self.target_arr.as_slice() == self.sort_arr.as_slice()
     }
 
     pub fn start_sort(&mut self) {

@@ -66,9 +66,8 @@ impl Scramble {
 }
 
 impl SortAlgorithm for Scramble {
-    fn step(&mut self, slice: &mut [usize]) -> Option<AlgorithmStep> {
-        let len = slice.len();
-        let mut indices = Vec::with_capacity(Self::ITERS_PER_STEP * 2);
+    fn step(&mut self, arr: &mut SortArray) {
+        let len = arr.len();
 
         if !self.has_initialized {
             self.window_size = len / 40;
@@ -80,9 +79,7 @@ impl SortAlgorithm for Scramble {
         let end = start + self.window_size;
 
         let (a, b) = self.rand_idx(len);
-        slice.swap(a, b);
-        indices.push(a);
-        indices.push(b);
+        arr.swap(a, b);
 
         self.iter += 1;
         if self.iter == Self::ITERS_PER_STEP {
@@ -93,11 +90,6 @@ impl SortAlgorithm for Scramble {
         if end > len && self.has_initialized && self.iter == 0 {
             self.finished = true;
         }
-
-        Some(AlgorithmStep {
-            num_ops: Self::ITERS_PER_STEP,
-            average_idx: indices.iter().sum::<usize>() / indices.len(),
-        })
     }
 
     fn steps_per_second(&mut self) -> usize {

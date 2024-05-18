@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use nannou::prelude::*;
 use nannou_audio;
 
-pub type SortArray = Arc<Mutex<Vec<usize>>>;
+// pub type SortBuffer = Arc<Mutex<Vec<usize>>>;
 
 mod algorithms;
 mod audio;
@@ -13,17 +13,19 @@ mod color_wheel;
 mod message;
 mod model;
 mod process;
+mod sorting_array;
 
 use audio::*;
 use color_wheel::*;
 use message::NoteEvent;
 use model::Model;
 use process::*;
+use sorting_array::SortArray;
 
 fn generate_envelope_data() {
     let sr = 48000.0;
     let attack_len = 0.002;
-    let release_len = 0.7;
+    let release_len = 0.9;
 
     let attack = (attack_len * sr).round() as usize;
     let release = (release_len * sr).round() as usize;
@@ -37,7 +39,7 @@ fn generate_envelope_data() {
     }
     for i in 0..release {
         let x = (release - i) as f32 / release as f32;
-        end[i] = x.clamp(0.0, 1.0);
+        end[i] = (x.powf(1.5)).clamp(0.0, 1.0);
     }
 
     start.append(&mut end);
@@ -61,7 +63,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
-    draw.background().color(BLACK);
+    draw.background().color(WHITE);
 
     model.draw(&draw);
 

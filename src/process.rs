@@ -9,8 +9,6 @@ const NOTE_POST_TIME: f32 = 0.010;
 /// The sorting algorithm process.
 #[derive(Debug)]
 pub struct Process {
-    sort_arr: SortArray,
-
     algorithms: Algorithms,
     pub current_algorithm: SortingAlgorithm,
 
@@ -26,13 +24,10 @@ pub struct Process {
 
 impl Process {
     pub fn new(
-        sort_arr: SortArray,
         note_sender: Sender<NoteEvent>,
         audio_callback_timer: Arc<Atomic<InstantTime>>,
     ) -> Self {
         Self {
-            sort_arr,
-
             algorithms: Algorithms::new(),
             current_algorithm: SortingAlgorithm::default(),
 
@@ -59,7 +54,7 @@ impl Process {
     /// Processes the currently-selected algorithm if it can.
     ///
     /// Returns `true` if the algorithm has finished sorting *and* the process is running.
-    pub fn update(&mut self) -> bool {
+    pub fn update(&mut self, arr: &mut SortArray) -> bool {
         let delta_time = self.last.elapsed().as_secs_f32();
         self.note_post_timer += delta_time;
         self.iters_last_update = 0;
@@ -78,26 +73,11 @@ impl Process {
         }
 
         // progress the algorithm...
-        if let Ok(mut guard) = self.sort_arr.lock() {
-            let output = self.algorithms.progress(
-                self.current_algorithm,
-                delta_time,
-                guard.as_mut_slice(),
-            );
+        self
+            .algorithms
+            .progress(self.current_algorithm, delta_time, arr);
 
-            if let Some(output) = output {
-                self.iters_last_update = output.num_iters();
-
-                if self.note_post_timer >= NOTE_POST_TIME {
-                    self.note_sender.send(NoteEvent::new(
-                        output.average_pos(),
-                        self.buffer_sample_offset(),
-                    ));
-
-                    self.note_post_timer -= NOTE_POST_TIME;
-                }
-            }
-        }
+        // self.iters_last_update = output.num_iters();
 
         // if we've just sorted the slice...
         if self.algorithms.finished(self.current_algorithm) {
