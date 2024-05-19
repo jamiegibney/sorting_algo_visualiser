@@ -2,39 +2,79 @@ use super::*;
 
 #[derive(Debug)]
 pub struct Insertion {
+    i: usize,
+    j: usize,
+    key: usize,
     finished: bool,
+    inner: bool,
+    has_initialized: bool,
+    write_to_0: bool,
 }
 
 impl Insertion {
-    pub fn new() -> Self {
-        Self { finished: false }
+    pub const fn new() -> Self {
+        Self {
+            i: 1,
+            j: 0,
+            key: 0,
+            finished: false,
+            inner: true,
+            has_initialized: false,
+            write_to_0: false,
+        }
     }
 }
 
 impl SortAlgorithm for Insertion {
-    fn step(&mut self, slice: &mut SortArray) {
-        todo!()
-        // if self.finished {
-        //     return None;
-        // }
-        //
-        // let len = slice.len();
-        //
-        // for i in 1..len {
-        //     let key = slice[i];
-        //     let mut j = i as isize - 1;
-        //
-        //     while j >= 0 && slice[j as usize] > key {
-        //         slice[j as usize + 1] = slice[j as usize];
-        //         j -= 1;
-        //     }
-        //
-        //     slice[(j + 1) as usize] = key;
-        // }
-        //
-        // self.finished = true;
-        //
-        // Some(AlgorithmStep { num_ops: 0, average_idx: 0 })
+    fn step(&mut self, arr: &mut SortArray) {
+        if self.finished {
+            return;
+        }
+
+        if !self.has_initialized {
+            self.key = arr.read(self.i);
+            self.has_initialized = true;
+        }
+
+        let len = arr.len();
+
+        if self.inner {
+            let arr_j = arr.read(self.j);
+
+            // this registers the comparison, but it cannot be used below
+            _ = arr.cmp(self.j, self.i, Ord::Greater);
+
+            if arr_j > self.key {
+                arr.write(self.j + 1, arr_j);
+
+                if self.j == 0 {
+                    self.inner = false;
+                    self.write_to_0 = true;
+                }
+                else {
+                    self.j -= 1;
+                }
+            }
+            else {
+                self.inner = false;
+            }
+        }
+        else if self.i < len {
+            arr.write(if self.write_to_0 { 0 } else { self.j + 1 }, self.key);
+            self.write_to_0 = false;
+
+            self.i += 1;
+
+            if self.i == len {
+                self.finished = true;
+                return;
+            }
+
+            self.key = arr.read(self.i);
+            self.j = self.i - 1;
+
+            self.inner = true;
+        }
     }
 
     fn steps_per_second(&mut self) -> usize {
@@ -46,6 +86,11 @@ impl SortAlgorithm for Insertion {
     }
 
     fn reset(&mut self) {
+        self.i = 1;
+        self.j = 0;
+        self.key = 0;
+        self.inner = true;
         self.finished = false;
+        self.has_initialized = false;
     }
 }

@@ -1,19 +1,20 @@
 use super::*;
 
 #[derive(Debug)]
+#[allow(clippy::struct_excessive_bools)] // hush now clippy
 pub struct RadixLSD10 {
-    //
+    base: RadixBase,
 }
 
 impl RadixLSD10 {
     pub fn new() -> Self {
-        Self {}
+        Self { base: RadixBase::lsd_with_base(10) }
     }
 }
 
 impl SortAlgorithm for RadixLSD10 {
-    fn step(&mut self, slice: &mut SortArray) {
-        todo!()
+    fn step(&mut self, arr: &mut SortArray) {
+        self.base.step(arr);
     }
 
     fn steps_per_second(&mut self) -> usize {
@@ -21,11 +22,10 @@ impl SortAlgorithm for RadixLSD10 {
     }
 
     fn finished(&self) -> bool {
-        todo!()
+        self.base.finished()
     }
 
     fn reset(&mut self) {
-        todo!();
+        self.base.reset();
     }
 }
-

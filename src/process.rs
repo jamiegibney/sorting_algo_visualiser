@@ -4,7 +4,7 @@ use atomic::Atomic;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::time::Instant;
 
-const NOTE_POST_TIME: f32 = 0.010;
+// const NOTE_POST_TIME: f32 = 0.010;
 
 /// The sorting algorithm process.
 #[derive(Debug)]
@@ -16,17 +16,10 @@ pub struct Process {
     last: Instant,
 
     iters_last_update: usize,
-
-    note_sender: Sender<NoteEvent>,
-    audio_callback_timer: Arc<Atomic<InstantTime>>,
-    note_post_timer: f32,
 }
 
 impl Process {
-    pub fn new(
-        note_sender: Sender<NoteEvent>,
-        audio_callback_timer: Arc<Atomic<InstantTime>>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
             algorithms: Algorithms::new(),
             current_algorithm: SortingAlgorithm::default(),
@@ -35,10 +28,6 @@ impl Process {
             last: Instant::now(),
 
             iters_last_update: 0,
-
-            note_sender,
-            audio_callback_timer,
-            note_post_timer: 0.0,
         }
     }
 
@@ -54,9 +43,11 @@ impl Process {
     /// Processes the currently-selected algorithm if it can.
     ///
     /// Returns `true` if the algorithm has finished sorting *and* the process is running.
-    pub fn update(&mut self, arr: &mut SortArray) -> bool {
-        let delta_time = self.last.elapsed().as_secs_f32();
-        self.note_post_timer += delta_time;
+    pub fn update(&mut self, arr: &mut SortArray, mut speed: f32) -> bool {
+        if matches!(self.current_algorithm, SortingAlgorithm::Shuffle) {
+            speed = 1.0;
+        }
+        let delta_time = self.last.elapsed().as_secs_f32() * speed;
         self.iters_last_update = 0;
         self.last = Instant::now();
 
@@ -73,11 +64,8 @@ impl Process {
         }
 
         // progress the algorithm...
-        self
-            .algorithms
+        self.algorithms
             .progress(self.current_algorithm, delta_time, arr);
-
-        // self.iters_last_update = output.num_iters();
 
         // if we've just sorted the slice...
         if self.algorithms.finished(self.current_algorithm) {
@@ -93,33 +81,16 @@ impl Process {
         self.running
     }
 
-    pub const fn iters_last_update(&self) -> usize {
-        self.iters_last_update
-    }
-
     pub fn toggle(&mut self) {
         self.running = !self.running;
     }
 
     pub fn run(&mut self) {
         self.running = true;
-        self.note_post_timer = 0.0;
     }
 
     pub fn stop(&mut self) {
         self.running = false;
-    }
-
-    fn buffer_sample_offset(&self) -> u32 {
-        use std::sync::atomic::Ordering::Relaxed;
-
-        let samples_exact = self
-            .audio_callback_timer
-            .load(Relaxed)
-            .elapsed()
-            .as_secs_f32()
-            * SAMPLE_RATE as f32;
-
-        samples_exact.round() as u32 % BUFFER_SIZE as u32
+        self.algorithms.reset(self.current_algorithm);
     }
 }

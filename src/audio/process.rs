@@ -21,9 +21,7 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
                 Some(event)
                     if (event.sample_offset() as usize) <= block_start =>
                 {
-                    audio
-                        .voice_handler
-                        .new_voice(Audio::map_pos_to_freq(event.average_pos()));
+                    audio.voice_handler.new_voice(event.freq(), event.amp());
 
                     next_event = audio.note_receiver().try_recv().ok();
                 }
@@ -38,7 +36,7 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
         }
 
         // TODO(jamiegibney): master gain control?
-        let mut gain = [0.08; MAX_BLOCK_SIZE];
+        let mut gain = [0.03; MAX_BLOCK_SIZE];
 
         // process voices and clean any which are finished
         audio
@@ -52,6 +50,8 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
 
     process_effects(audio, buffer);
     update_callback_timer(audio);
+
+    audio.update_voice_counter();
 }
 
 fn update_callback_timer(audio: &Audio) {

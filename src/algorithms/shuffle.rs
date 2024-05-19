@@ -93,7 +93,7 @@ impl SortAlgorithm for Scramble {
     }
 
     fn steps_per_second(&mut self) -> usize {
-        SortingAlgorithm::Scramble.steps()
+        SortingAlgorithm::Shuffle.steps()
     }
 
     fn finished(&self) -> bool {

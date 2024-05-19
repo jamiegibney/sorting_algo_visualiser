@@ -2,9 +2,12 @@
 
 use super::*;
 use crate::algorithms::SortingAlgorithm;
+use crate::sorting_array::SortResults;
+use crossbeam_channel::{bounded, Receiver, Sender};
 use nannou::prelude::*;
 use nannou_audio::Stream;
 use std::f32::consts::{FRAC_PI_2, TAU};
+use std::sync::atomic::AtomicU32;
 use std::sync::mpsc::channel;
 
 pub struct Model {
@@ -12,6 +15,7 @@ pub struct Model {
 
     process: Process,
     color_wheel: ColorWheel,
+    ui: Ui,
     sort_arr: SortArray,
 
     target_arr: Vec<usize>,
@@ -19,6 +23,12 @@ pub struct Model {
 
     audio_stream: Stream<Audio>,
     resolution: usize,
+
+    speed_scale: f32,
+
+    results: SortResults,
+    audio_voice_counter: Arc<AtomicU32>,
+    sorted: bool,
 
     num_iters: usize,
 }
@@ -35,41 +45,73 @@ impl Model {
             .build()
             .expect("failed to initialize main window");
 
-        let display = ColorWheel::new();
-        let (note_tx, note_rx) = channel();
+        let color_wheel = ColorWheel::new();
+        let (note_tx, note_rx) = bounded(24);
 
-        let audio_model = Audio::new(note_rx);
+        let audio_voice_counter = Arc::new(AtomicU32::new(0));
+
+        let audio_model = Audio::new(note_rx, Arc::clone(&audio_voice_counter));
         let audio_callback_timer = Arc::clone(audio_model.callback_timer());
 
         Self {
             window_id,
 
-            process: Process::new(
-                note_tx,
-                audio_callback_timer,
-            )
-            .with_algorithm(SortingAlgorithm::Bubble),
-            color_wheel: display,
-            sort_arr: SortArray::with_size(DEFAULT_RESOLUTION),
+            process: Process::new(),
+            color_wheel,
+            ui: Ui::new(),
+            sort_arr: SortArray::new(
+                DEFAULT_RESOLUTION, note_tx, audio_callback_timer,
+            ),
 
             previous_algo: None,
 
             target_arr: (0..DEFAULT_RESOLUTION).collect(),
-
             resolution: DEFAULT_RESOLUTION,
+
+            speed_scale: 1.0,
+
+            results: SortResults::default(),
+            sorted: true,
+            audio_voice_counter,
 
             audio_stream: audio_model.into_stream(),
             num_iters: 0,
         }
     }
 
+    pub fn set_speed_scale(&mut self, factor: f32) {
+        const MAX_SPEED_SCALE: f32 = 1000.0;
+        const MIN_SPEED_SCALE: f32 = 0.01;
+        self.speed_scale = factor.clamp(MIN_SPEED_SCALE, MAX_SPEED_SCALE);
+    }
+
+    // Increases the sorting speed by 20 %.
+    pub fn increase_speed(&mut self) {
+        self.set_speed_scale(self.speed_scale * 1.2);
+    }
+
+    // Decreases the sorting speed by 20 %.
+    pub fn decrease_speed(&mut self) {
+        self.set_speed_scale(self.speed_scale * 0.8);
+    }
+
     pub fn set_resolution(&mut self, new_resolution: usize) {
+        self.process.stop();
+
         self.target_arr = (0..new_resolution).collect();
         self.sort_arr.resize(new_resolution);
         self.color_wheel.resize(new_resolution);
         self.resolution = new_resolution;
 
-        println!("Set resolution to {new_resolution} slices");
+        self.sorted = true;
+    }
+
+    pub fn increase_resolution(&mut self) {
+        self.set_resolution((self.resolution * 8 / 6).min(MAX_RESOLUTION));
+    }
+
+    pub fn decrease_resolution(&mut self) {
+        self.set_resolution((self.resolution * 6 / 8).max(3));
     }
 
     pub fn double_resolution(&mut self) {
@@ -81,48 +123,68 @@ impl Model {
     }
 
     pub fn next_algorithm(&mut self) {
-        self.process.current_algorithm.next();
-        println!(
-            "Switching sorting algorithm to {}",
-            self.process.current_algorithm
-        );
+        if self.is_running() {
+            return;
+        }
+
+        self.process.current_algorithm.cycle_next();
+        self.sort_arr
+            .set_current_algorithm(self.process.current_algorithm);
     }
 
-    /// Updates the app state, i.e. the internal sorting process and then the color wheel.
-    pub fn update(&mut self) {
-        let sorted = self.process.update(&mut self.sort_arr);
-        self.num_iters += self.process.iters_last_update();
+    pub fn previous_algorithm(&mut self) {
+        if self.is_running() {
+            return;
+        }
 
-        if sorted {
+        self.process.current_algorithm.cycle_prev();
+        self.sort_arr
+            .set_current_algorithm(self.process.current_algorithm);
+    }
+
+    /// Updates the app state.
+    pub fn update(&mut self) {
+        if self.process.update(&mut self.sort_arr, self.speed_scale) {
             if !matches!(
                 self.process.current_algorithm,
-                SortingAlgorithm::Scramble
+                SortingAlgorithm::Shuffle
             ) {
-                let not = if self.is_sorted() { "" } else { "NOT " };
-                println!(
-                    "Done in {} iterations. The array is {not}correctly sorted.",
-                    self.num_iters
-                );
+                self.results.add_from(&self.sort_arr.sort_results());
+                self.sorted = self.is_sorted();
             }
-
-            self.num_iters = 0;
 
             if let Some(prev) = self.previous_algo.take() {
                 self.process.set_algorithm(prev);
             }
         }
 
+        self.results.add_from(&self.sort_arr.sort_results());
+
         self.color_wheel.update(self.sort_arr.as_slice());
+        self.color_wheel
+            .overlay_from(self.sort_arr.take_op_buffer());
+
+        self.ui.update(
+            self.process.current_algorithm,
+            &self.results,
+            self.resolution,
+            self.speed_scale,
+            self.audio_voice_counter.load(atomic::Ordering::Relaxed),
+            self.sorted,
+        );
     }
 
-    /// Draws the color wheel to the provided `Draw` instance.
+    /// Draws the app visuals to the provided `Draw` instance.
     pub fn draw(&self, draw: &Draw) {
         self.color_wheel.draw(draw);
+        self.ui.draw(draw);
     }
 
     /// Forces the color wheel to be sorted via `std::sort_unstable`.
     pub fn force_sort(&mut self) {
+        self.process.stop();
         self.sort_arr.force_sort();
+        self.sorted = true;
     }
 
     /// Returns `true` if the sorting array is correctly sorted.
@@ -130,18 +192,26 @@ impl Model {
         self.target_arr.as_slice() == self.sort_arr.as_slice()
     }
 
+    /// Starts a sort.
     pub fn start_sort(&mut self) {
+        self.results.reset();
         self.process.run();
+        self.sorted = false;
     }
 
-    pub fn scramble(&mut self) {
-        if self.process.is_running() {
-            return;
-        }
+    /// Whether a sort/shuffle is currently in progress.
+    pub const fn is_running(&self) -> bool {
+        self.process.is_running()
+    }
 
+    /// Starts a shuffle.
+    pub fn shuffle(&mut self) {
         self.previous_algo = Some(self.process.current_algorithm);
-        self.process.set_algorithm(SortingAlgorithm::Scramble);
+        self.process.set_algorithm(SortingAlgorithm::Shuffle);
         self.process.run();
+
+        self.sorted = false;
+        self.results.reset();
     }
 
     pub fn toggle(&mut self) {
@@ -157,27 +227,36 @@ impl Model {
 pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
         Key::Space => {
-            println!("Sorting with {}...", model.current_algorithm());
-            model.start_sort();
+            if !model.is_running() {
+                model.start_sort();
+            }
         }
         Key::R => {
-            println!("Randomising...");
-            model.scramble();
+            if !model.is_running() {
+                model.shuffle();
+            }
         }
+        Key::T => model.toggle(),
+        Key::Return => {
+            if app.keys.mods.shift() {
+                model.previous_algorithm();
+            }
+            else {
+                model.next_algorithm();
+            }
+        }
+        Key::Plus | Key::Equals => model.increase_resolution(),
+        Key::Underline | Key::Minus => model.decrease_resolution(),
+        Key::Period => model.increase_speed(),
+        Key::Comma => model.decrease_speed(),
         Key::F => {
             println!("Forcing-sorting the wheel...");
             model.force_sort();
-        }
-        Key::T => {
-            model.toggle();
         }
         Key::V => {
             let s = if model.is_sorted() { "" } else { "NOT " };
             println!("The array is {s}correctly sorted.");
         }
-        Key::Return => model.next_algorithm(),
-        Key::Plus | Key::Equals => model.double_resolution(),
-        Key::Underline | Key::Minus => model.halve_resolution(),
         _ => {}
     }
 }

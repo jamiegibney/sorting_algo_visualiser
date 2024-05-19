@@ -14,18 +14,20 @@ mod message;
 mod model;
 mod process;
 mod sorting_array;
+mod ui;
 
 use audio::*;
 use color_wheel::*;
 use message::NoteEvent;
 use model::Model;
 use process::*;
-use sorting_array::SortArray;
+use sorting_array::{SortArray, Operation};
+use ui::Ui;
 
 fn generate_envelope_data() {
     let sr = 48000.0;
-    let attack_len = 0.002;
-    let release_len = 0.9;
+    let attack_len = 0.02;
+    let release_len = 0.03;
 
     let attack = (attack_len * sr).round() as usize;
     let release = (release_len * sr).round() as usize;
@@ -63,7 +65,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
-    draw.background().color(WHITE);
+    draw.background().color(BLACK);
 
     model.draw(&draw);
 

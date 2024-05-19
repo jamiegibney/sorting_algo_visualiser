@@ -2,17 +2,43 @@
 
 use super::*;
 use nannou::{draw::background::new, prelude::*};
-use std::f32::consts::{FRAC_PI_2, TAU};
+use std::{
+    f32::consts::{FRAC_PI_2, TAU},
+    marker::PhantomData as PD,
+};
 
-pub const DEFAULT_RESOLUTION: usize = 1024;
+pub const DEFAULT_RESOLUTION: usize = 256;
 pub const MAX_RESOLUTION: usize = 8192;
 pub const CIRCLE_RADIUS: f32 = 300.0;
 
+// pub const WRITE_COLOR: Rgb<f32> =
+//     Rgb { red: 1.0, green: 1.0, blue: 1.0, standard: PD };
+// pub const READ_COLOR: Rgb<f32> =
+//     Rgb { red: 0.0, green: 0.8, blue: 1.0, standard: PD };
+// pub const SWAP_COLOR: Rgb<f32> =
+//     Rgb { red: 0.0, green: 0.0, blue: 0.0, standard: PD };
+pub const COMPARE_COLOR: Rgb<f32> =
+    Rgb { red: 1.0, green: 1.0, blue: 1.0, standard: PD };
+
+#[derive(Clone, Copy, Debug)]
+pub enum Overlay {
+    Override(Rgb<f32>),
+    Invert,
+    Darken,
+}
+
 /// The color wheel display.
+#[derive(Debug)]
 pub struct ColorWheel {
+    /// The vertices of each slice of the color wheel.
     vertices: Vec<Vec3>,
+    /// The mesh indices for the color wheel.
     indices: Vec<usize>,
+    /// Any overlay colors for the sorting process.
+    overlay_colors: Vec<Option<Overlay>>,
+    /// The original array of colors.
     colors: Vec<Rgb<f32>>,
+    /// The indices for each slice's color — copied from the sorting array.
     color_indices: Vec<usize>,
 }
 
@@ -22,6 +48,7 @@ impl ColorWheel {
         let mut s = Self {
             vertices: vec![Vec3::ZERO; DEFAULT_RESOLUTION + 1],
             indices: (0..DEFAULT_RESOLUTION * 3).collect(),
+            overlay_colors: vec![None; DEFAULT_RESOLUTION],
             colors: vec![Rgb::new(0.0, 0.0, 0.0); DEFAULT_RESOLUTION],
             color_indices: (0..DEFAULT_RESOLUTION).collect(),
         };
@@ -36,6 +63,7 @@ impl ColorWheel {
     pub fn resize(&mut self, new_resolution: usize) {
         self.vertices = vec![Vec3::ZERO; new_resolution + 1];
         self.indices = (0..new_resolution * 3).collect();
+        self.overlay_colors = vec![None; new_resolution];
         self.colors = vec![Rgb::new(0.0, 0.0, 0.0); new_resolution];
         self.color_indices = (0..new_resolution).collect();
 
@@ -47,6 +75,35 @@ impl ColorWheel {
     /// [`Self::sort_arr_ref`]).
     pub fn update(&mut self, arr: &[usize]) {
         self.color_indices.copy_from_slice(arr);
+        self.overlay_colors.fill(None);
+    }
+
+    /// Sets any overlay colors from a set of operations.
+    pub fn overlay_from(&mut self, operations: Vec<Operation>) {
+        for op in operations {
+            match op {
+                Operation::Compare { a, b, res } => {
+                    if res {
+                        self.overlay_colors[a] =
+                            Some(Overlay::Override(COMPARE_COLOR));
+                        self.overlay_colors[b] =
+                            Some(Overlay::Override(COMPARE_COLOR));
+                    }
+                }
+                Operation::Swap { a, b } => {
+                    self.overlay_colors[a] = Some(Overlay::Darken);
+                    self.overlay_colors[b] = Some(Overlay::Darken);
+                }
+                Operation::Write { idx } => {
+                    self.overlay_colors[idx] = Some(Overlay::Darken);
+                }
+                Operation::Read { idx } => {
+                    self.overlay_colors[idx] =
+                        Some(Overlay::Override(COMPARE_COLOR));
+                }
+                Operation::Noop => (),
+            }
+        }
     }
 
     /// Draws the color wheel to the provided `Draw` instance.
@@ -54,7 +111,20 @@ impl ColorWheel {
         draw.mesh()
             .indexed_colored(
                 (0..self.resolution() * 3).map(|i| {
-                    let color = self.colors[self.color_indices[i / 3]];
+                    let color_idx = self.color_indices[i / 3];
+
+                    let mut color = self.overlay_colors[color_idx].map_or(
+                        self.colors[color_idx],
+                        |o| match o {
+                            Overlay::Override(c) => c,
+                            Overlay::Invert => {
+                                Self::invert_color(self.colors[color_idx])
+                            }
+                            Overlay::Darken => {
+                                Self::darken_color(self.colors[color_idx])
+                            }
+                        },
+                    );
 
                     if i % 3 == 0 {
                         (self.vertices[0], color)
@@ -96,8 +166,26 @@ impl ColorWheel {
         }
     }
 
+    /// Returns the resolution of the color wheel.
     fn resolution(&self) -> usize {
         self.colors.len()
+    }
+
+    fn invert_color(mut color: Rgb<f32>) -> Rgb<f32> {
+        color.red = 1.0 - color.red;
+        color.green = 1.0 - color.green;
+        color.blue = 1.0 - color.blue;
+
+        color
+    }
+
+    fn darken_color(mut color: Rgb<f32>) -> Rgb<f32> {
+        // TODO: use HSL?
+        color.red *= 0.7;
+        color.green *= 0.7;
+        color.blue *= 0.7;
+
+        color
     }
 }
 

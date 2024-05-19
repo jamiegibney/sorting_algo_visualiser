@@ -2,7 +2,8 @@ use super::*;
 use atomic::Atomic;
 use bytemuck::NoUninit;
 use nannou_audio::*;
-use std::sync::mpsc::Receiver;
+use std::sync::atomic::AtomicU32;
+use crossbeam_channel::Receiver;
 use std::time::Instant;
 
 mod effects;
@@ -13,7 +14,7 @@ mod tri;
 mod voice;
 
 use effects::*;
-use voice::VoiceHandler;
+pub use voice::{VoiceHandler, NUM_VOICES};
 
 pub const MAJ_PENTATONIC: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
 pub const MIN_PENTATONIC: [f32; 5] = [0.0, 3.0, 5.0, 7.0, 10.0];
@@ -53,16 +54,22 @@ pub struct Audio {
     voice_handler: VoiceHandler,
 
     callback_timer: Arc<Atomic<InstantTime>>,
+
+    voice_counter: Arc<AtomicU32>,
 }
 
 impl Audio {
     /// Creates a new `AudioModel`.
-    pub fn new(note_receiver: Receiver<NoteEvent>) -> Self {
+    pub fn new(
+        note_receiver: Receiver<NoteEvent>,
+        voice_counter: Arc<AtomicU32>,
+    ) -> Self {
         Self {
             note_receiver,
             sample_rate: SAMPLE_RATE,
             voice_handler: VoiceHandler::new(SAMPLE_RATE as f32),
             callback_timer: Arc::new(Atomic::new(InstantTime(Instant::now()))),
+            voice_counter,
         }
     }
 
@@ -76,16 +83,12 @@ impl Audio {
         &self.callback_timer
     }
 
-    /// Maps an average sorting position to frequency in Hz.
-    pub fn map_pos_to_freq(average_pos: f32) -> f32 {
-        const MIN_NOTE: f32 = 40.0;
-        const MAX_NOTE: f32 = 90.0;
-
-        let x = average_pos.clamp(0.0, 1.0);
-        let note = (MAX_NOTE - MIN_NOTE).mul_add(x, MIN_NOTE).round();
-        let quantized = Self::quantize_to_scale(&MAJ_PENTATONIC, note, 69.0);
-
-        Self::note_to_freq(quantized)
+    /// Updates the voice counter with the current number of active voices.
+    pub fn update_voice_counter(&self) {
+        self.voice_counter.store(
+            self.voice_handler.num_active() as u32,
+            atomic::Ordering::Relaxed,
+        );
     }
 
     /// Converts the `AudioModel` into a CPAL audio stream.

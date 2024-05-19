@@ -2,18 +2,18 @@ use super::*;
 
 #[derive(Debug)]
 pub struct RadixMSD4 {
-    //
+    base: RadixBase,
 }
 
 impl RadixMSD4 {
     pub fn new() -> Self {
-        Self {}
+        Self { base: RadixBase::msd_with_base(4) }
     }
 }
 
 impl SortAlgorithm for RadixMSD4 {
-    fn step(&mut self, slice: &mut SortArray) {
-        todo!()
+    fn step(&mut self, arr: &mut SortArray) {
+        self.base.step(arr);
     }
 
     fn steps_per_second(&mut self) -> usize {
@@ -21,10 +21,10 @@ impl SortAlgorithm for RadixMSD4 {
     }
 
     fn finished(&self) -> bool {
-        todo!()
+        self.base.finished()
     }
 
     fn reset(&mut self) {
-        todo!();
+        self.base.reset();
     }
 }

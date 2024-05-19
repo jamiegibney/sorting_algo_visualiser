@@ -2,53 +2,45 @@ use super::*;
 
 #[derive(Debug)]
 pub struct Bubble {
-    current_idx: usize,
+    i: usize,
+    j: usize,
     swapped: bool,
     finished: bool,
 }
 
 impl Bubble {
-    pub fn new() -> Self {
-        Self { current_idx: 0, swapped: false, finished: false }
+    pub const fn new() -> Self {
+        Self { i: 0, j: 0, swapped: false, finished: false }
     }
 }
 
 impl SortAlgorithm for Bubble {
-    fn step(&mut self, slice: &mut SortArray) {
-        todo!()
-        // if self.finished {
-        //     return None;
-        // }
-        //
-        // let mut swaps = Vec::new();
-        //
-        // let len = slice.len();
-        // let num_ops = len - self.current_idx - 1;
-        //
-        // for j in 0..(len - self.current_idx - 1) {
-        //     if slice[j] > slice[j + 1] {
-        //         slice.swap(j, j + 1);
-        //
-        //         swaps.push(j);
-        //         swaps.push(j + 1);
-        //     }
-        // }
-        //
-        // self.current_idx += 1;
-        //
-        // if swaps.is_empty() {
-        //     self.finished = true;
-        // }
-        //
-        // Some(AlgorithmStep {
-        //     num_ops,
-        //     average_idx: if swaps.is_empty() {
-        //         0
-        //     }
-        //     else {
-        //         swaps.iter().sum::<usize>() / swaps.len()
-        //     },
-        // })
+    fn step(&mut self, arr: &mut SortArray) {
+        if self.finished {
+            return;
+        }
+
+        let len = arr.len();
+        let num_ops = len - self.i - 1;
+
+        if self.j < len - self.i - 1 {
+            if arr.cmp(self.j, self.j + 1, Ord::Greater) {
+                arr.swap(self.j, self.j + 1);
+                self.swapped = true;
+            }
+
+            self.j += 1;
+        }
+        else {
+            if !self.swapped {
+                self.finished = true;
+                return;
+            }
+
+            self.i += 1;
+            self.j = 0;
+            self.swapped = false;
+        }
     }
 
     fn steps_per_second(&mut self) -> usize {
@@ -60,7 +52,8 @@ impl SortAlgorithm for Bubble {
     }
 
     fn reset(&mut self) {
-        self.current_idx = 0;
+        self.i = 0;
+        self.j = 0;
         self.swapped = false;
         self.finished = false;
     }

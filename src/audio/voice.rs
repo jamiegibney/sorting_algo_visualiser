@@ -5,7 +5,7 @@ use sine::SineOsc;
 use tri::TriOsc;
 
 /// The maximum number of polyphonic audio voices.
-pub const NUM_VOICES: usize = 64;
+pub const NUM_VOICES: usize = 256;
 /// The length of each voice's amplitude envelope.
 const ENVELOPE_LENGTH: f32 = 1.0;
 
@@ -17,6 +17,7 @@ struct Voice<O: Oscillator = SineOsc> {
     osc: O,
     freq: f32,
     envelope: AmpEnvelope,
+    amp: f32,
     pan: f32,
 }
 
@@ -44,11 +45,13 @@ impl<O: Oscillator> Voice<O> {
 #[derive(Clone, Copy, Debug, Default)]
 pub enum OverrideVoiceBehavior {
     /// Replace the oldest voice.
-    #[default]
     ReplaceOldest,
     /// Replace the voice with the lowest frequency.
     ReplaceLowest,
+    /// Replace the voice with the highest frequency.
+    ReplaceHighest,
     /// Do not replace any active voices.
+    #[default]
     DoNotReplace,
 }
 
@@ -99,7 +102,8 @@ impl VoiceHandler {
 
         for voice in self.voices.iter_mut().flatten() {
             for (i, sample) in (block_start..block_end).enumerate() {
-                let voice_amp = voice.envelope.next().unwrap_or(0.0);
+                let voice_amp =
+                    voice.envelope.next().unwrap_or(0.0) * voice.amp;
                 let out = voice.osc.tick() * voice_amp * gain[i];
                 let (l, r) = voice.balance();
 
@@ -110,13 +114,13 @@ impl VoiceHandler {
     }
 
     /// Starts a new voice.
-    pub fn new_voice(&mut self, freq: f32) {
+    pub fn new_voice(&mut self, freq: f32, amp: f32) {
         // println!("Spawning new voice at frequency {freq} Hz");
 
         if let Some(free_idx) = self.voices.iter().position(Option::is_none) {
             // self.create_voice() is inlined here in case no voices are free (in
             // which case no new voice is ever created)
-            self.voices[free_idx] = Some(self.create_voice(freq));
+            self.voices[free_idx] = Some(self.create_voice(freq, amp));
             return;
         }
 
@@ -126,7 +130,7 @@ impl VoiceHandler {
             return;
         }
 
-        let new_voice = self.create_voice(freq);
+        let new_voice = self.create_voice(freq, amp);
 
         match self.override_behavior {
             ReplaceOldest => {
@@ -152,6 +156,20 @@ impl VoiceHandler {
                 };
 
                 *lowest = Some(new_voice);
+            }
+            ReplaceHighest => {
+                let highest = unsafe {
+                    self.voices
+                        .iter_mut()
+                        .min_by(|v1, v2| {
+                            let v1_freq = v1.as_ref().unwrap_unchecked().freq;
+                            let v2_freq = v2.as_ref().unwrap_unchecked().freq;
+                            v2_freq.total_cmp(&v1_freq)
+                        })
+                        .unwrap_unchecked()
+                };
+
+                *highest = Some(new_voice);
             }
             DoNotReplace => (),
         }
@@ -183,12 +201,13 @@ impl VoiceHandler {
     }
 
     /// Returns a new voice.
-    fn create_voice(&mut self, freq: f32) -> Voice {
+    fn create_voice(&mut self, freq: f32, amp: f32) -> Voice {
         Voice {
             id: self.next_voice_id(),
             sample_rate: self.sample_rate,
             osc: SineOsc::new(freq, self.sample_rate),
             freq,
+            amp,
             envelope: AmpEnvelope::new(),
             pan: nannou::rand::random_f32() * 2.0,
         }

@@ -8,7 +8,7 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 
 ## TODO
 
-- [ ] Reimplement sorting algorithms with `SortArray` methods
+- [ ] Instead of computing each algorithm in discrete steps, "record" their operations on the main array, and then play that back at whatever rate is appropriate.
 - [ ] Add new sorting algorithms
     - [ ] Merge sort
     - [ ] Quick sort
@@ -20,7 +20,4 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
     - [ ] Gnome sort
     - [ ] ...
 - [ ] Send audio messages from `SortArray`, synchronised with the audio thread
-- [ ] Send/receive GUI messages from `SortArray` to update visual
-- [ ] Add some basic UI elements
-    - [ ] Text displays for algorithm information
-    - [ ] UI controls for sorting/scrambling/changing algorithm
+- [ ] UI controls for sorting/scrambling/changing algorithm
