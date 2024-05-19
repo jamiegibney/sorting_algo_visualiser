@@ -9,6 +9,7 @@ use delay::DelayLine;
 use ring_buf::RingBuffer;
 use verb::Reverb;
 
+/// Trait for audio processing effects.
 pub trait AudioEffect: std::fmt::Debug {
     /// Processes a single sample of audio.
     fn tick(&mut self, channel: usize, sample: f32) -> f32;
@@ -27,23 +28,28 @@ pub trait AudioEffect: std::fmt::Debug {
     }
 }
 
+/// A stereo wrapper of two mono effects.
 #[derive(Debug)]
-pub struct StereoWrapper<E: AudioEffect> {
+pub struct StereoEffect<E: AudioEffect> {
+    /// The effect for the left stereo channel.
     pub l: E,
+    /// The effect for the right stereo channel.
     pub r: E,
 }
 
-impl<E: AudioEffect> StereoWrapper<E> {
+impl<E: AudioEffect> StereoEffect<E> {
+    /// Creates a new `StereoEffect` from two `AudioEffect`s.
     pub const fn new(l: E, r: E) -> Self {
         Self { l, r }
     }
 
+    /// Unwraps the stored audio effects.
     pub fn unwrap(self) -> (E, E) {
         (self.l, self.r)
     }
 }
 
-impl<E: AudioEffect> AudioEffect for StereoWrapper<E> {
+impl<E: AudioEffect> AudioEffect for StereoEffect<E> {
     fn tick(&mut self, channel: usize, sample: f32) -> f32 {
         match channel {
             0 => self.l.tick(channel, sample),
