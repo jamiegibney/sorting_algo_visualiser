@@ -22,7 +22,7 @@ use message::NoteEvent;
 use model::Model;
 use process::*;
 use sorting_array::{SortArray, Operation};
-use ui::Ui;
+use ui::{Ui, UiData};
 
 fn generate_envelope_data() {
     let sr = 48000.0;

@@ -18,7 +18,7 @@ pub enum Operation {
     Compare { a: usize, b: usize, res: bool },
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct SortResults {
     pub writes: usize,
     pub reads: usize,

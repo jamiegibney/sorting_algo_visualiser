@@ -9,6 +9,7 @@ use nannou_audio::Stream;
 use std::f32::consts::{FRAC_PI_2, TAU};
 use std::sync::atomic::AtomicU32;
 use std::sync::mpsc::channel;
+use std::time::Instant;
 
 pub struct Model {
     window_id: WindowId,
@@ -164,14 +165,16 @@ impl Model {
         self.color_wheel
             .overlay_from(self.sort_arr.take_op_buffer());
 
-        self.ui.update(
-            self.process.current_algorithm,
-            &self.results,
-            self.resolution,
-            self.speed_scale,
-            self.audio_voice_counter.load(atomic::Ordering::Relaxed),
-            self.sorted,
-        );
+        self.ui.update_text(UiData {
+            algorithm: self.process.current_algorithm,
+            results: self.results,
+            resolution: self.resolution,
+            speed: self.speed_scale,
+            num_voices: self
+                .audio_voice_counter
+                .load(atomic::Ordering::Relaxed),
+            sorted: self.sorted,
+        });
     }
 
     /// Draws the app visuals to the provided `Draw` instance.

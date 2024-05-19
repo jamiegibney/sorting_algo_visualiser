@@ -3,6 +3,16 @@ use super::sorting_array::SortResults;
 use super::*;
 use nannou::text::*;
 
+#[derive(Clone, Copy, Debug)]
+pub struct UiData {
+    pub algorithm: SortingAlgorithm,
+    pub results: SortResults,
+    pub resolution: usize,
+    pub speed: f32,
+    pub num_voices: u32,
+    pub sorted: bool,
+}
+
 #[derive(Debug)]
 pub struct Ui {
     text: String,
@@ -13,15 +23,17 @@ impl Ui {
         Self { text: String::new() }
     }
 
-    pub fn update(
-        &mut self,
-        algorithm: SortingAlgorithm,
-        results: &SortResults,
-        resolution: usize,
-        speed: f32,
-        num_voices: u32,
-        sorted: bool,
-    ) {
+    pub fn update_text(&mut self, data: UiData) {
+        let UiData {
+            algorithm,
+            results,
+            resolution,
+            speed,
+            num_voices,
+            sorted,
+        } = data;
+
+        // text
         let SortResults { writes, reads, swaps, comparisons } = results;
         let algo = format!("Algorithm: {algorithm}",);
         let res = format!("{resolution} segments");
@@ -35,6 +47,7 @@ impl Ui {
             "Active audio voices: {num_voices}/{}",
             super::audio::NUM_VOICES
         );
+
         self.text =
             format!("{algo}\n{res}\n{info}\n{speed}\n{sorted}\n{voices}");
     }
