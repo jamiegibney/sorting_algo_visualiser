@@ -12,7 +12,7 @@ use std::{
 #[derive(Clone, Copy, Debug)]
 pub enum Operation {
     Noop,
-    Write { idx: usize },
+    Write { idx: usize, value: usize },
     Read { idx: usize },
     Swap { a: usize, b: usize },
     Compare { a: usize, b: usize, res: bool },
@@ -81,7 +81,7 @@ impl SortArray {
 
     /// Writes `value` to position `idx`. Will panic if `idx > `[`SortArray::len()`].
     pub fn write(&mut self, idx: usize, value: usize) {
-        self.add_op(Operation::Write { idx });
+        self.add_op(Operation::Write { idx, value });
         self.arr[idx] = value;
     }
 
@@ -185,7 +185,7 @@ impl SortArray {
 
         match op {
             Operation::Noop => {}
-            Operation::Write { idx } => {
+            Operation::Write { idx, .. } => {
                 freq = idx as f32 / len_f * 0.5;
                 amp = 0.6;
             }

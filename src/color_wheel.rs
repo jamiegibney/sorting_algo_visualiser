@@ -94,7 +94,7 @@ impl ColorWheel {
                     self.overlay_colors[a] = Some(Overlay::Darken);
                     self.overlay_colors[b] = Some(Overlay::Darken);
                 }
-                Operation::Write { idx } => {
+                Operation::Write { idx, value } => {
                     self.overlay_colors[idx] = Some(Overlay::Darken);
                 }
                 Operation::Read { idx } => {

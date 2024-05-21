@@ -1,5 +1,6 @@
 use super::*;
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug)]
 pub struct Insertion {
     i: usize,

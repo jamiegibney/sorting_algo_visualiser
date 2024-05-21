@@ -17,7 +17,7 @@ pub struct Scramble {
 impl Scramble {
     const ITERS_PER_STEP: usize = 12;
 
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             has_initialized: false,
 
