@@ -234,13 +234,12 @@ pub struct SortArray2 {
     /// The current sorting algorithm.
     curr_algorithm: SortingAlgorithm,
 
-    /// The scratch buffer, used for the sorting process and playback.
+    /// The scratch buffer, used for the sorting process.
     arr: Vec<usize>,
     /// The initial array before the sorting process.
     initial_arr: Vec<usize>,
 
-    /// The buffer of operations — where the sorting operations are
-    /// recorded to.
+    /// The buffer of operations — where the sorting operations are recorded to.
     op_buffer: Vec<SortOperation>,
 }
 
@@ -259,21 +258,21 @@ impl SortArray2 {
     /// Writes `value` to position `idx`. Will panic if
     /// `idx > `[`SortArray::len()`].
     pub fn write(&mut self, idx: usize, value: usize) {
-        self.add_op(SortOperation::Write { idx, value });
+        self.push(SortOperation::Write { idx, value });
         self.arr[idx] = value;
     }
 
     /// Returns the value as position `idx`. Will panic if
     /// `idx > `[`SortArray::len()`].
     pub fn read(&mut self, idx: usize) -> usize {
-        self.add_op(SortOperation::Read { idx });
+        self.push(SortOperation::Read { idx });
         self.arr[idx]
     }
 
     /// Swaps the elements at positions `a` and `b`. Will panic if either index
     /// is greater than [`SortArray::len()`].
     pub fn swap(&mut self, a: usize, b: usize) {
-        self.add_op(SortOperation::Swap { a, b });
+        self.push(SortOperation::Swap { a, b });
         self.arr.swap(a, b);
     }
 
@@ -283,7 +282,7 @@ impl SortArray2 {
         let cmp = self.arr[a].cmp(&self.arr[b]);
         let res = cmp == ord;
 
-        self.add_op(SortOperation::Compare { a, b, res });
+        self.push(SortOperation::Compare { a, b, res });
         self.arr.swap(a, b);
 
         res
@@ -349,7 +348,7 @@ impl SortArray2 {
         self.arr.sort_unstable();
     }
 
-    /// Whether the array is currently sorted or not.
+    /// Whether the array is currently sorted.
     pub fn is_sorted(&self) -> bool {
         self.arr.iter().enumerate().all(|(i, &v)| i == v)
     }
@@ -360,11 +359,16 @@ impl SortArray2 {
     }
 
     /// Returns the array as a slice.
-    pub fn as_slice(&self) -> &[usize] {
+    ///
+    /// # Safety
+    ///
+    /// This method should *not* be used by sorting algorithms, as it bypasses the 
+    /// operation recording.
+    pub unsafe fn inner(&self) -> &[usize] {
         &self.arr
     }
 
-    fn add_op(&mut self, op: SortOperation) {
+    fn push(&mut self, op: SortOperation) {
         self.op_buffer.push(op);
     }
 }
