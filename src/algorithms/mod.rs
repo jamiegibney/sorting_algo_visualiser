@@ -25,7 +25,7 @@ pub trait SortAlgorithm: Debug {
     /// The target number of steps per second for this algorithm.
     fn steps_per_second(&mut self) -> usize;
 
-    /// Whether the sort has finished or not.
+    /// Whether the sort has finished.
     fn finished(&self) -> bool;
     /// Resets the sorting algorithm state.
     fn reset(&mut self);

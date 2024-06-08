@@ -1,6 +1,6 @@
 use super::algorithms::SortingAlgorithm;
-use crate::prelude::*;
 use super::*;
+use crate::prelude::*;
 use nannou::text::*;
 
 #[derive(Clone, Copy, Debug)]

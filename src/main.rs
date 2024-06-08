@@ -12,18 +12,18 @@ mod audio;
 mod color_wheel;
 mod message;
 mod model;
+mod prelude;
 mod process;
 mod sorting;
 mod ui;
-mod prelude;
 
 use audio::*;
 use color_wheel::*;
 use message::NoteEvent;
 use model::Model;
+use prelude::*;
 use process::*;
 use ui::{Ui, UiData};
-use prelude::*;
 
 fn generate_envelope_data() {
     let sr = 48000.0;

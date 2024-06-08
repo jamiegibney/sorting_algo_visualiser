@@ -38,7 +38,7 @@ impl AmpEnvelope {
         Some(self.data[pos])
     }
 
-    /// Whether the envelope is active or not.
+    /// Whether the envelope is active.
     pub const fn is_active(&self) -> bool {
         self.read_pos < self.data.len()
     }

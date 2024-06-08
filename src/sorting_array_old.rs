@@ -79,27 +79,29 @@ impl SortArray {
         }
     }
 
-    /// Writes `value` to position `idx`. Will panic if `idx > `[`SortArray::len()`].
+    /// Writes `value` to position `idx`. Will panic if `idx >
+    /// `[`SortArray::len()`].
     pub fn write(&mut self, idx: usize, value: usize) {
         self.add_op(Operation::Write { idx, value });
         self.arr[idx] = value;
     }
 
-    /// Returns the value as position `idx`. Will panic if `idx > `[`SortArray::len()`].
+    /// Returns the value as position `idx`. Will panic if `idx >
+    /// `[`SortArray::len()`].
     pub fn read(&mut self, idx: usize) -> usize {
         self.add_op(Operation::Read { idx });
         self.arr[idx]
     }
 
-    /// Swaps the elements at positions `a` and `b`. Will panic if either index is
-    /// greater than [`SortArray::len()`].
+    /// Swaps the elements at positions `a` and `b`. Will panic if either index
+    /// is greater than [`SortArray::len()`].
     pub fn swap(&mut self, a: usize, b: usize) {
         self.add_op(Operation::Swap { a, b });
         self.arr.swap(a, b);
     }
 
-    /// Compares the elements at positions `a` and `b` to match `ord`. Will panic if
-    /// either index is greater than [`SortArray::len()`].
+    /// Compares the elements at positions `a` and `b` to match `ord`. Will
+    /// panic if either index is greater than [`SortArray::len()`].
     pub fn cmp(&mut self, a: usize, b: usize, ord: Ordering) -> bool {
         let cmp = self.arr[a].cmp(&self.arr[b]);
         let res = cmp == ord;

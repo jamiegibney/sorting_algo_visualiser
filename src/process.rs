@@ -42,7 +42,8 @@ impl Process {
 
     /// Processes the currently-selected algorithm if it can.
     ///
-    /// Returns `true` if the algorithm has finished sorting *and* the process is running.
+    /// Returns `true` if the algorithm has finished sorting *and* the process
+    /// is running.
     pub fn update(&mut self, arr: &mut SortArray, mut speed: f32) -> bool {
         if matches!(self.current_algorithm, SortingAlgorithm::Shuffle) {
             speed = 1.0;
@@ -53,8 +54,8 @@ impl Process {
 
         if self.running {
             if self.algorithms.finished(self.current_algorithm) {
-                // if the algorithm has finished and we want to run, reset it before starting
-                // again.
+                // if the algorithm has finished and we want to run, reset it
+                // before starting again.
                 self.algorithms.reset(self.current_algorithm);
             }
         }
