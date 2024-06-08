@@ -13,16 +13,17 @@ mod color_wheel;
 mod message;
 mod model;
 mod process;
-mod sorting_array;
+mod sorting;
 mod ui;
+mod prelude;
 
 use audio::*;
 use color_wheel::*;
 use message::NoteEvent;
 use model::Model;
 use process::*;
-use sorting_array::{SortArray, Operation};
 use ui::{Ui, UiData};
+use prelude::*;
 
 fn generate_envelope_data() {
     let sr = 48000.0;

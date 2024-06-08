@@ -1,5 +1,5 @@
 use super::algorithms::SortingAlgorithm;
-use super::sorting_array::SortResults;
+use crate::prelude::*;
 use super::*;
 use nannou::text::*;
 

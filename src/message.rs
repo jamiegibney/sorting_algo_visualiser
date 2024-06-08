@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::mpsc::{channel, Receiver, Sender};
 
 #[derive(Clone, Copy, Debug)]
 pub struct NoteEvent {

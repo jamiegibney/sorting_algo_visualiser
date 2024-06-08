@@ -1,15 +1,9 @@
 #![allow(clippy::suboptimal_flops)]
 
 use super::*;
-use crate::algorithms::SortingAlgorithm;
-use crate::sorting_array::SortResults;
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crate::prelude::*;
 use nannou::prelude::*;
 use nannou_audio::Stream;
-use std::f32::consts::{FRAC_PI_2, TAU};
-use std::sync::atomic::AtomicU32;
-use std::sync::mpsc::channel;
-use std::time::Instant;
 
 pub struct Model {
     window_id: WindowId,

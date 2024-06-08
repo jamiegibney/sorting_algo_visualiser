@@ -79,10 +79,10 @@ impl ColorWheel {
     }
 
     /// Sets any overlay colors from a set of operations.
-    pub fn overlay_from(&mut self, operations: Vec<Operation>) {
+    pub fn overlay_from(&mut self, operations: Vec<SortOperation>) {
         for op in operations {
             match op {
-                Operation::Compare { a, b, res } => {
+                SortOperation::Compare { a, b, res } => {
                     if res {
                         self.overlay_colors[a] =
                             Some(Overlay::Override(COMPARE_COLOR));
@@ -90,18 +90,18 @@ impl ColorWheel {
                             Some(Overlay::Override(COMPARE_COLOR));
                     }
                 }
-                Operation::Swap { a, b } => {
+                SortOperation::Swap { a, b } => {
                     self.overlay_colors[a] = Some(Overlay::Darken);
                     self.overlay_colors[b] = Some(Overlay::Darken);
                 }
-                Operation::Write { idx, value } => {
+                SortOperation::Write { idx, value } => {
                     self.overlay_colors[idx] = Some(Overlay::Darken);
                 }
-                Operation::Read { idx } => {
+                SortOperation::Read { idx } => {
                     self.overlay_colors[idx] =
                         Some(Overlay::Override(COMPARE_COLOR));
                 }
-                Operation::Noop => (),
+                SortOperation::Noop => (),
             }
         }
     }

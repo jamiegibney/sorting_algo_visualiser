@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use super::*;
 use nannou_audio::Buffer;
 
@@ -10,7 +12,7 @@ use ring_buf::RingBuffer;
 use verb::Reverb;
 
 /// Trait for audio processing effects.
-pub trait AudioEffect: std::fmt::Debug {
+pub trait AudioEffect: Debug {
     /// Processes a single sample of audio.
     fn tick(&mut self, channel: usize, sample: f32) -> f32;
     /// The sample rate of this audio effect.
