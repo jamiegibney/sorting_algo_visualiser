@@ -8,7 +8,8 @@ struct AudioState {
 
 #[derive(Debug)]
 pub struct Player {
-    arr_len: usize,
+    capture: Option<SortCapture>,
+
     audio: AudioState,
 }
 
@@ -19,17 +20,23 @@ impl Player {
         callback_timer: Arc<Atomic<InstantTime>>,
     ) -> Self {
         Self {
-            arr_len: len,
             audio: AudioState { callback_timer, note_event_sender },
+            capture: None,
         }
     }
 
-    pub fn set_len(&mut self, len: usize) {
-        self.arr_len = len;
+    pub fn set_capture(&mut self, capture: SortCapture) {
+        self.capture = Some(capture);
     }
 
     fn send_note_event(&self, op: SortOperation, timing: u32) {
-        let len_f = self.arr_len as f32;
+        assert!(
+            self.capture.is_some(),
+            "attempted to post note event with no valid capture"
+        );
+
+        // This will not panic, as we know capture is Some
+        let len_f = self.capture.as_ref().unwrap().len() as f32;
         let (mut freq, mut amp) = (0.5, 1.0);
 
         match op {

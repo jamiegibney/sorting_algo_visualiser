@@ -37,6 +37,10 @@ impl SortCapture {
         self.algorithm
     }
 
+    pub fn len(&self) -> usize {
+        self.initial_array.len()
+    }
+
     pub fn playback_progress(&self) -> f32 {
         let n = (self.initial_array.len() - 1) as f32;
         self.counter as f32 / n
