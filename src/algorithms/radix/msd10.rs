@@ -12,19 +12,22 @@ impl RadixMSD10 {
 }
 
 impl SortAlgorithm for RadixMSD10 {
-    fn step(&mut self, arr: &mut SortArray) {
-        self.base.step(arr);
-    }
-
-    fn steps_per_second(&mut self) -> usize {
-        SortingAlgorithm::RadixMSD10.steps()
-    }
-
-    fn finished(&self) -> bool {
-        self.base.finished()
-    }
-
-    fn reset(&mut self) {
-        self.base.reset();
+    // fn step(&mut self, arr: &mut SortArray) {
+    //     self.base.step(arr);
+    // }
+    //
+    // fn steps_per_second(&mut self) -> usize {
+    //     SortingAlgorithm::RadixMSD10.speed()
+    // }
+    //
+    // fn finished(&self) -> bool {
+    //     self.base.finished()
+    // }
+    //
+    // fn reset(&mut self) {
+    //     self.base.reset();
+    // }
+    fn process(&mut self, arr: &mut SortArray) {
+        todo!();
     }
 }

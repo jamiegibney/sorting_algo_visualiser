@@ -12,20 +12,18 @@ pub struct Model {
     color_wheel: ColorWheel,
     ui: Ui,
     sort_arr: SortArray,
+    player: Player,
 
     target_arr: Vec<usize>,
-    previous_algo: Option<SortingAlgorithm>,
 
     audio_stream: Stream<Audio>,
     resolution: usize,
 
-    speed_scale: f32,
-
-    results: SortResults,
+    // results: SortResults,
     audio_voice_counter: Arc<AtomicU32>,
     sorted: bool,
 
-    num_iters: usize,
+    update_data: UpdateData,
 }
 
 impl Model {
@@ -54,45 +52,28 @@ impl Model {
             process: Process::new(),
             color_wheel,
             ui: Ui::new(),
-            sort_arr: SortArray::new(
+            sort_arr: SortArray::new(DEFAULT_RESOLUTION),
+            player: Player::new(
                 DEFAULT_RESOLUTION, note_tx, audio_callback_timer,
             ),
-
-            previous_algo: None,
 
             target_arr: (0..DEFAULT_RESOLUTION).collect(),
             resolution: DEFAULT_RESOLUTION,
 
-            speed_scale: 1.0,
-
-            results: SortResults::default(),
+            // results: SortResults::default(),
             sorted: true,
             audio_voice_counter,
 
+            update_data: UpdateData {
+                last_frame: Instant::now(),
+                delta_time: 0.0,
+            },
+
             audio_stream: audio_model.into_stream(),
-            num_iters: 0,
         }
     }
 
-    pub fn set_speed_scale(&mut self, factor: f32) {
-        const MAX_SPEED_SCALE: f32 = 1000.0;
-        const MIN_SPEED_SCALE: f32 = 0.01;
-        self.speed_scale = factor.clamp(MIN_SPEED_SCALE, MAX_SPEED_SCALE);
-    }
-
-    // Increases the sorting speed by 20 %.
-    pub fn increase_speed(&mut self) {
-        self.set_speed_scale(self.speed_scale * 1.2);
-    }
-
-    // Decreases the sorting speed by 20 %.
-    pub fn decrease_speed(&mut self) {
-        self.set_speed_scale(self.speed_scale * 0.8);
-    }
-
     pub fn set_resolution(&mut self, new_resolution: usize) {
-        self.process.stop();
-
         self.target_arr = (0..new_resolution).collect();
         self.sort_arr.resize(new_resolution);
         self.color_wheel.resize(new_resolution);
@@ -118,57 +99,24 @@ impl Model {
     }
 
     pub fn next_algorithm(&mut self) {
-        if self.is_running() {
-            return;
-        }
-
         self.process.current_algorithm.cycle_next();
-        self.sort_arr
-            .set_current_algorithm(self.process.current_algorithm);
     }
 
     pub fn previous_algorithm(&mut self) {
-        if self.is_running() {
-            return;
-        }
-
         self.process.current_algorithm.cycle_prev();
-        self.sort_arr
-            .set_current_algorithm(self.process.current_algorithm);
     }
 
+    // *** *** *** //
+
     /// Updates the app state.
-    pub fn update(&mut self) {
-        if self.process.update(&mut self.sort_arr, self.speed_scale) {
-            if !matches!(
-                self.process.current_algorithm,
-                SortingAlgorithm::Shuffle
-            ) {
-                self.results.add_from(&self.sort_arr.sort_results());
-                self.sorted = self.is_sorted();
-            }
+    pub fn update(&mut self, app: &App) {
+        self.update_data.delta_time =
+            self.update_data.last_frame.elapsed().as_secs_f32();
 
-            if let Some(prev) = self.previous_algo.take() {
-                self.process.set_algorithm(prev);
-            }
-        }
+        // update the player
+        self.player.update(app, self.update_data);
 
-        self.results.add_from(&self.sort_arr.sort_results());
-
-        self.color_wheel.update(self.sort_arr.as_slice());
-        self.color_wheel
-            .overlay_from(self.sort_arr.take_op_buffer());
-
-        self.ui.update_text(UiData {
-            algorithm: self.process.current_algorithm,
-            results: self.results,
-            resolution: self.resolution,
-            speed: self.speed_scale,
-            num_voices: self
-                .audio_voice_counter
-                .load(atomic::Ordering::Relaxed),
-            sorted: self.sorted,
-        });
+        self.update_data.last_frame = Instant::now();
     }
 
     /// Draws the app visuals to the provided `Draw` instance.
@@ -177,63 +125,89 @@ impl Model {
         self.ui.draw(draw);
     }
 
+    // *** *** *** //
+
     /// Forces the color wheel to be sorted via `std::sort_unstable`.
     pub fn force_sort(&mut self) {
-        self.process.stop();
         self.sort_arr.force_sort();
-        self.sorted = true;
+        self.player.set_capture(self.sort_arr.dump_capture());
     }
 
     /// Returns `true` if the sorting array is correctly sorted.
     pub fn is_sorted(&self) -> bool {
-        self.target_arr.as_slice() == self.sort_arr.as_slice()
+        self.sort_arr.is_sorted()
     }
 
-    /// Starts a sort.
-    pub fn start_sort(&mut self) {
-        self.results.reset();
-        self.process.run();
-        self.sorted = false;
-    }
+    pub fn compute(&mut self) {
+        // prepare the array
+        self.sort_arr
+            .prepare_for_sort(self.process.current_algorithm);
 
-    /// Whether a sort/shuffle is currently in progress.
-    pub const fn is_running(&self) -> bool {
-        self.process.is_running()
+        // perform the sort
+        self.process.sort(&mut self.sort_arr);
+
+        // dump the captured data to the player
+        self.player.set_capture(self.sort_arr.dump_capture());
     }
 
     /// Starts a shuffle.
     pub fn shuffle(&mut self) {
-        self.previous_algo = Some(self.process.current_algorithm);
-        self.process.set_algorithm(SortingAlgorithm::Shuffle);
-        self.process.run();
+        let algo = self.process.current_algorithm;
 
-        self.sorted = false;
-        self.results.reset();
+        self.process.set_algorithm(SortingAlgorithm::Shuffle);
+        self.compute();
+        self.process.set_algorithm(algo);
+
+        self.player.play();
     }
 
-    pub fn toggle(&mut self) {
-        self.process.toggle();
+    pub fn play(&mut self) {
+        self.player.play();
+    }
+
+    pub fn pause(&mut self) {
+        self.player.pause();
+    }
+
+    pub fn stop(&mut self) {
+        self.player.stop();
+    }
+
+    pub const fn is_playing(&self) -> bool {
+        self.player.is_playing()
     }
 
     pub fn current_algorithm(&self) -> String {
         self.process.current_algorithm.to_string()
+    }
+
+    pub fn stop_audio(&self) {
+        _ = self.audio_stream.send(audio::Audio::stop);
+    }
+
+    pub fn resume_audio(&self) {
+        _ = self.audio_stream.send(audio::Audio::start);
     }
 }
 
 /// The callback for key-down presses.
 pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
+        // "play/pause"
         Key::Space => {
-            if !model.is_running() {
-                model.start_sort();
+            if model.is_playing() {
+                model.pause();
+            }
+            else {
+                model.play();
             }
         }
-        Key::R => {
-            if !model.is_running() {
-                model.shuffle();
-            }
-        }
-        Key::T => model.toggle(),
+        // "stop"
+        Key::Back | Key::Delete => model.stop(),
+        // "recompute"
+        Key::R => model.compute(),
+        // "shuffle"
+        Key::S => model.shuffle(),
         Key::Return => {
             if app.keys.mods.shift() {
                 model.previous_algorithm();
@@ -242,14 +216,20 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
                 model.next_algorithm();
             }
         }
+        // increase res
         Key::Plus | Key::Equals => model.increase_resolution(),
+        // decrease res
         Key::Underline | Key::Minus => model.decrease_resolution(),
-        Key::Period => model.increase_speed(),
-        Key::Comma => model.decrease_speed(),
+        // increase speed
+        // Key::Period => model.increase_speed(),
+        // decrease speed
+        // Key::Comma => model.decrease_speed(),
+        // "force-sort"
         Key::F => {
             println!("Forcing-sorting the wheel...");
             model.force_sort();
         }
+        // "verify"
         Key::V => {
             let s = if model.is_sorted() { "" } else { "NOT " };
             println!("The array is {s}correctly sorted.");

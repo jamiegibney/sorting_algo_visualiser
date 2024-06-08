@@ -56,6 +56,8 @@ pub struct Audio {
     callback_timer: Arc<Atomic<InstantTime>>,
 
     voice_counter: Arc<AtomicU32>,
+
+    running: bool,
 }
 
 impl Audio {
@@ -70,6 +72,7 @@ impl Audio {
             voice_handler: VoiceHandler::new(SAMPLE_RATE as f32),
             callback_timer: Arc::new(Atomic::new(InstantTime(Instant::now()))),
             voice_counter,
+            running: true,
         }
     }
 
@@ -108,6 +111,14 @@ impl Audio {
         stream.play().unwrap();
 
         stream
+    }
+
+    pub fn stop(&mut self) {
+        self.running = false;
+    }
+
+    pub fn start(&mut self) {
+        self.running = true;
     }
 
     /// Calculates the frequency value of the provided MIDI note value, relative to 440 Hz.

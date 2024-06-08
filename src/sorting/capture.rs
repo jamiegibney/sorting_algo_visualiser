@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 pub struct SortCapture {
@@ -77,6 +78,10 @@ impl SortCapture {
         unimplemented!();
     }
 
+    pub fn is_done(&self) -> bool {
+        self.counter == self.initial_array.len() - 1
+    }
+
     /// Returns the current progress of the sorting process as a value between
     /// `0.0` and `1.0`.
     pub fn playback_progress(&self) -> f32 {
@@ -90,7 +95,8 @@ impl SortCapture {
     /// The ordering of the operations always follows a forward arrangement in
     /// the buffer — i.e., if the progress is rewound, then the operations in
     /// the slice are still ordered going forward.
-    pub fn set_progress(&mut self, mut progress: f32) -> &[SortOperation] {
+    #[must_use]
+    pub fn set_progress(&mut self, mut progress: f32) -> Rc<[SortOperation]> {
         progress = progress.clamp(0.0, 1.0);
         let n = (self.initial_array.len() - 1) as f32;
 
@@ -100,13 +106,14 @@ impl SortCapture {
         self.counter = (progress * n).round() as usize;
         self.set_arr();
 
-        &self.operations[match curr.cmp(&last) {
+        self.operations[match curr.cmp(&last) {
             Ordering::Less => curr..last,
             // useless lint as its suggestion doesn't compile
             #[allow(clippy::range_plus_one)]
             Ordering::Equal => curr..curr + 1,
             Ordering::Greater => last..curr,
         }]
+        .into()
     }
 
     fn set_arr(&mut self) {

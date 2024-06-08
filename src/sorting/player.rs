@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::rc::Rc;
 
 #[derive(Debug)]
 struct AudioState {
@@ -10,23 +11,122 @@ struct AudioState {
 pub struct Player {
     capture: Option<SortCapture>,
 
+    playback_time: f32,
+    speed_mult: f32,
+
+    is_playing: bool,
+
     audio: AudioState,
+
+    ops_last_frame: Rc<[SortOperation]>,
 }
 
 impl Player {
+    pub const DEFAULT_PLAYBACK_TIME: f32 = 5.0;
+
     pub fn new(
         len: usize,
         note_event_sender: Sender<NoteEvent>,
         callback_timer: Arc<Atomic<InstantTime>>,
     ) -> Self {
         Self {
-            audio: AudioState { callback_timer, note_event_sender },
             capture: None,
+
+            playback_time: Self::DEFAULT_PLAYBACK_TIME,
+            speed_mult: 1.0,
+
+            is_playing: false,
+
+            audio: AudioState { callback_timer, note_event_sender },
+
+            ops_last_frame: [].into(),
         }
     }
 
+    /// Sets the `SortCapture` for the player.
     pub fn set_capture(&mut self, capture: SortCapture) {
+        self.is_playing = false;
         self.capture = Some(capture);
+    }
+
+    /// Removes the player's current `SortCapture`.
+    pub fn reset_capture(&mut self) {
+        self.is_playing = false;
+        self.capture = None;
+    }
+
+    /// The time it takes for the player to complete the array playback from
+    /// start to finished.
+    pub const fn playback_time(&self) -> f32 {
+        self.playback_time
+    }
+
+    /// Sets the base playback speed of the player such that it will complete
+    /// the array playback in `time_to_complete` seconds.
+    pub fn set_playback_time(&mut self, time_to_complete: f32) {
+        self.playback_time = time_to_complete;
+    }
+
+    /// Resets the playback time to the default value
+    /// ([`Self::DEFAULT_PLAYBACK_TIME`]).
+    pub fn reset_playback_time(&mut self) {
+        self.playback_time = Self::DEFAULT_PLAYBACK_TIME;
+    }
+
+    /// Sets the playback speed. This acts as a multiplier to
+    /// [`Self::playback_time`].
+    pub fn set_speed(&mut self, speed: f32) {
+        self.speed_mult = speed;
+    }
+
+    /// Resets the speed multiplier, honouring [`Self::playback_time`].
+    pub fn reset_speed(&mut self) {
+        self.speed_mult = 1.0;
+    }
+
+    /// Begins playback.
+    pub fn play(&mut self) {
+        self.is_playing = true;
+    }
+
+    /// Pauses playback at the current position.
+    pub fn pause(&mut self) {
+        self.is_playing = false;
+    }
+
+    /// Pauses playback, and resets the playback position to the beginning.
+    pub fn stop(&mut self) {
+        self.is_playing = false;
+
+        if let Some(cap) = self.capture.as_mut() {
+            _ = cap.set_progress(0.0);
+        }
+    }
+
+    /// Whether the player is playing.
+    pub const fn is_playing(&self) -> bool {
+        self.is_playing
+    }
+
+    /// Copies the internal array state to the provided array.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `arr.len()` is not equal to the capture's array length.
+    pub fn update_arr(&mut self, arr: &mut [usize]) {
+        // assert!(self.capture.is_some(), "no valid capture is available");
+        if (self.capture.is_none()) {
+            return;
+        }
+
+        let cap = self.capture.as_ref().unwrap();
+        assert_eq!(cap.len(), arr.len(), "mismatched lengths");
+
+        arr.copy_from_slice(cap.arr());
+    }
+
+    pub fn ops_last_frame(&self) -> Rc<[SortOperation]> {
+        Rc::clone(&self.ops_last_frame)
     }
 
     fn send_note_event(&self, op: SortOperation, timing: u32) {
@@ -89,5 +189,28 @@ impl Player {
             * SAMPLE_RATE as f32;
 
         samples_exact.round() as u32 % BUFFER_SIZE as u32
+    }
+}
+
+impl Updatable for Player {
+    fn update(&mut self, app: &App, update: UpdateData) {
+        if !self.is_playing || self.capture.is_none() {
+            return;
+        }
+
+        let cap = unsafe { self.capture.as_mut().unwrap_unchecked() };
+
+        if cap.is_done() {
+            self.is_playing = false;
+            return;
+        }
+
+        let progress_per_second = self.playback_time.recip() * self.speed_mult;
+        let progress_per_frame = progress_per_second * update.delta_time;
+
+        let curr_progress = cap.playback_progress();
+
+        self.ops_last_frame =
+            cap.set_progress(curr_progress + progress_per_frame);
     }
 }

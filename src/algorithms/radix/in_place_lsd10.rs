@@ -12,19 +12,22 @@ impl InPlaceRadixLSD10 {
 }
 
 impl SortAlgorithm for InPlaceRadixLSD10 {
-    fn step(&mut self, slice: &mut SortArray) {
-        todo!()
-    }
-
-    fn steps_per_second(&mut self) -> usize {
-        SortingAlgorithm::InPlaceRadixLSD10.steps()
-    }
-
-    fn finished(&self) -> bool {
-        todo!()
-    }
-
-    fn reset(&mut self) {
+    // fn step(&mut self, slice: &mut SortArray) {
+    //     todo!()
+    // }
+    //
+    // fn steps_per_second(&mut self) -> usize {
+    //     SortingAlgorithm::InPlaceRadixLSD10.speed()
+    // }
+    //
+    // fn finished(&self) -> bool {
+    //     todo!()
+    // }
+    //
+    // fn reset(&mut self) {
+    //     todo!();
+    // }
+    fn process(&mut self, arr: &mut SortArray) {
         todo!();
     }
 }

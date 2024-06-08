@@ -3,9 +3,6 @@
 use std::sync::{Arc, Mutex};
 
 use nannou::prelude::*;
-use nannou_audio;
-
-// pub type SortBuffer = Arc<Mutex<Vec<usize>>>;
 
 mod algorithms;
 mod audio;
@@ -55,13 +52,23 @@ fn generate_envelope_data() {
     });
 }
 
-fn main() {
-    // generate_envelope_data();
-    nannou::app(Model::new).update(update).run();
+#[derive(Clone, Copy, Debug)]
+pub struct UpdateData {
+    pub last_frame: Instant,
+    pub delta_time: f32,
+}
+
+pub trait Updatable {
+    fn update(&mut self, app: &App, update: UpdateData);
+}
+
+pub trait Drawable: Updatable {
+    fn draw(&self, draw: &Draw, update: UpdateData);
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
-    model.update();
+    let update = &update;
+    model.update(app);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -71,4 +78,9 @@ fn view(app: &App, model: &Model, frame: Frame) {
     model.draw(&draw);
 
     draw.to_frame(app, &frame).unwrap();
+}
+
+fn main() {
+    // generate_envelope_data();
+    nannou::app(Model::new).update(update).run();
 }

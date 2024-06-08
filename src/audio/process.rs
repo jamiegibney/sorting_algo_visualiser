@@ -6,6 +6,11 @@ pub const MAX_BLOCK_SIZE: usize = 64;
 
 /// The audio processing callback.
 pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
+    if !audio.running {
+        buffer.fill(0.0);
+        return;
+    }
+
     let buffer_len = buffer.len_frames();
 
     let mut next_event = audio.note_receiver().try_recv().ok();

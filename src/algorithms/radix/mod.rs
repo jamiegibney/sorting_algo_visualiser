@@ -103,107 +103,107 @@ impl RadixBase {
         }
     }
 
-    pub fn step(&mut self, arr: &mut SortArray) {
-        if !self.has_initialized {
-            self.aux_arr.resize(arr.len(), 0);
-            self.aux_arr.copy_from_slice(arr.as_slice());
-            self.has_initialized = true;
-            self.out_idx = arr.len() - 1;
-        }
-
-        if let Some(max) = self.max_value {
-            if max / self.exp == 0 {
-                self.finished = true;
-                return;
-            }
-            // each outer loop iter
-            else if self.shifted_bins
-                && self.stored_occurrences
-                && self.built_output
-                && self.copied
-            {
-                self.exp *= self.base;
-
-                self.stored_occurrences = false;
-                self.count.fill(0);
-                self.count_idx = 0;
-
-                self.shifted_bins = false;
-
-                self.built_output = false;
-                self.aux_arr.fill(0);
-                self.out_idx = arr.len() - 1;
-
-                self.copied = false;
-                self.copy_idx = 0;
-
-                self.aux_arr.copy_from_slice(arr.as_slice());
-            }
-        }
-        else {
-            // find max
-            let a = arr.read(self.idx_max);
-            if a > self.max {
-                self.max = a;
-            }
-
-            self.idx_max += 1;
-
-            if self.idx_max == arr.len() {
-                self.max_value = Some(self.max);
-            }
-        }
-
-        // store in count bins
-        if !self.stored_occurrences {
-            let idx = (arr.read(self.count_idx) / self.exp) % self.base;
-            self.count[idx] += 1;
-            self.count_idx += 1;
-
-            if self.count_idx == arr.len() {
-                self.stored_occurrences = true;
-            }
-
-            return;
-        }
-
-        // shift bins over
-        if !self.shifted_bins {
-            for i in 1..self.base {
-                self.count[i] += self.count[i - 1];
-            }
-
-            self.shifted_bins = true;
-        }
-
-        // construct output for this exp
-        if !self.built_output {
-            let arr_i = arr.read(self.out_idx);
-            let idx = (arr_i / self.exp) % self.base;
-
-            self.aux_arr[self.count[idx] - 1] = arr_i;
-            self.count[idx] -= 1;
-
-            if self.out_idx == 0 {
-                self.built_output = true;
-                return;
-            }
-
-            self.out_idx -= 1;
-            return;
-        }
-
-        // copy to output
-        if !self.copied {
-            arr.write(self.copy_idx, self.aux_arr[self.copy_idx]);
-
-            self.copy_idx += 1;
-
-            if self.copy_idx == arr.len() {
-                self.copied = true;
-            }
-        }
-    }
+    // pub fn step(&mut self, arr: &mut SortArray) {
+    //     if !self.has_initialized {
+    //         self.aux_arr.resize(arr.len(), 0);
+    //         arr.copy_to(&mut self.aux_arr);
+    //         self.has_initialized = true;
+    //         self.out_idx = arr.len() - 1;
+    //     }
+    //
+    //     if let Some(max) = self.max_value {
+    //         if max / self.exp == 0 {
+    //             self.finished = true;
+    //             return;
+    //         }
+    //         // each outer loop iter
+    //         else if self.shifted_bins
+    //             && self.stored_occurrences
+    //             && self.built_output
+    //             && self.copied
+    //         {
+    //             self.exp *= self.base;
+    //
+    //             self.stored_occurrences = false;
+    //             self.count.fill(0);
+    //             self.count_idx = 0;
+    //
+    //             self.shifted_bins = false;
+    //
+    //             self.built_output = false;
+    //             self.aux_arr.fill(0);
+    //             self.out_idx = arr.len() - 1;
+    //
+    //             self.copied = false;
+    //             self.copy_idx = 0;
+    //
+    //             self.aux_arr.copy_from_slice(arr.as_slice());
+    //         }
+    //     }
+    //     else {
+    //         // find max
+    //         let a = arr.read(self.idx_max);
+    //         if a > self.max {
+    //             self.max = a;
+    //         }
+    //
+    //         self.idx_max += 1;
+    //
+    //         if self.idx_max == arr.len() {
+    //             self.max_value = Some(self.max);
+    //         }
+    //     }
+    //
+    //     // store in count bins
+    //     if !self.stored_occurrences {
+    //         let idx = (arr.read(self.count_idx) / self.exp) % self.base;
+    //         self.count[idx] += 1;
+    //         self.count_idx += 1;
+    //
+    //         if self.count_idx == arr.len() {
+    //             self.stored_occurrences = true;
+    //         }
+    //
+    //         return;
+    //     }
+    //
+    //     // shift bins over
+    //     if !self.shifted_bins {
+    //         for i in 1..self.base {
+    //             self.count[i] += self.count[i - 1];
+    //         }
+    //
+    //         self.shifted_bins = true;
+    //     }
+    //
+    //     // construct output for this exp
+    //     if !self.built_output {
+    //         let arr_i = arr.read(self.out_idx);
+    //         let idx = (arr_i / self.exp) % self.base;
+    //
+    //         self.aux_arr[self.count[idx] - 1] = arr_i;
+    //         self.count[idx] -= 1;
+    //
+    //         if self.out_idx == 0 {
+    //             self.built_output = true;
+    //             return;
+    //         }
+    //
+    //         self.out_idx -= 1;
+    //         return;
+    //     }
+    //
+    //     // copy to output
+    //     if !self.copied {
+    //         arr.write(self.copy_idx, self.aux_arr[self.copy_idx]);
+    //
+    //         self.copy_idx += 1;
+    //
+    //         if self.copy_idx == arr.len() {
+    //             self.copied = true;
+    //         }
+    //     }
+    // }
 
     pub fn finished(&self) -> bool {
         self.finished
@@ -234,19 +234,22 @@ impl RadixBase {
 }
 
 impl SortAlgorithm for RadixBase {
-    fn step(&mut self, arr: &mut SortArray) {
-        self.step(arr);
-    }
-
-    fn steps_per_second(&mut self) -> usize {
-        300
-    }
-
-    fn finished(&self) -> bool {
-        self.finished
-    }
-
-    fn reset(&mut self) {
-        self.reset();
+    // fn step(&mut self, arr: &mut SortArray) {
+    //     self.step(arr);
+    // }
+    //
+    // fn steps_per_second(&mut self) -> usize {
+    //     300
+    // }
+    //
+    // fn finished(&self) -> bool {
+    //     self.finished
+    // }
+    //
+    // fn reset(&mut self) {
+    //     self.reset();
+    // }
+    fn process(&mut self, arr: &mut SortArray) {
+        todo!();
     }
 }

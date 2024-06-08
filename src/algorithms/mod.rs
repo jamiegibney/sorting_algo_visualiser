@@ -20,29 +20,7 @@ use selection::Selection;
 use shuffle::Scramble;
 
 pub trait SortAlgorithm: Debug {
-    /// A single sorting step.
-    fn step(&mut self, arr: &mut SortArray);
-    /// The target number of steps per second for this algorithm.
-    fn steps_per_second(&mut self) -> usize;
-
-    /// Whether the sort has finished.
-    fn finished(&self) -> bool;
-    /// Resets the sorting algorithm state.
-    fn reset(&mut self);
-
-    /// Progresses the algorithm based on `delta_time`.
-    fn progress(&mut self, delta_time: f32, arr: &mut SortArray) {
-        let steps =
-            ((self.steps_per_second() as f32) * delta_time).round() as usize;
-
-        if self.finished() {
-            return;
-        }
-
-        for _ in 0..steps {
-            self.step(arr);
-        }
-    }
+    fn process(&mut self, arr: &mut SortArray);
 }
 
 /// A particular sorting algorithm.
@@ -68,26 +46,6 @@ pub enum SortingAlgorithm {
 }
 
 impl SortingAlgorithm {
-    pub const fn steps(self) -> usize {
-        match self {
-            Self::RadixLSD2
-            | Self::RadixLSD4
-            | Self::RadixLSD5
-            | Self::RadixLSD10
-            | Self::InPlaceRadixLSD4
-            | Self::InPlaceRadixLSD10
-            | Self::RadixMSD4
-            | Self::RadixMSD10 => 300,
-
-            Self::Bogo => 20000,
-            Self::Bubble => 8000,
-            Self::Selection => 8000,
-            Self::Insertion => 4000,
-
-            Self::Shuffle => 1500,
-        }
-    }
-
     pub fn cycle_next(&mut self) {
         match self {
             Self::RadixLSD2 => *self = Self::RadixLSD4,
@@ -176,30 +134,13 @@ impl Algorithms {
         Self { algos: HashMap::from(arr) }
     }
 
-    pub fn progress(
+    pub fn process(
         &mut self,
         algorithm: SortingAlgorithm,
-        delta_time: f32,
         arr: &mut SortArray,
     ) {
         if let Some(algo) = self.algos.get_mut(&algorithm) {
-            algo.progress(delta_time, arr);
-        }
-    }
-
-    pub fn step(&mut self, algorithm: SortingAlgorithm, arr: &mut SortArray) {
-        if let Some(algo) = self.algos.get_mut(&algorithm) {
-            algo.step(arr);
-        }
-    }
-
-    pub fn finished(&self, algorithm: SortingAlgorithm) -> bool {
-        self.algos.get(&algorithm).map_or(false, |a| a.finished())
-    }
-
-    pub fn reset(&mut self, algorithm: SortingAlgorithm) {
-        if let Some(algo) = self.algos.get_mut(&algorithm) {
-            algo.reset();
+            algo.process(arr);
         }
     }
 }
