@@ -78,6 +78,7 @@ impl Model {
         self.sort_arr.resize(new_resolution);
         self.color_wheel.resize(new_resolution);
         self.resolution = new_resolution;
+        self.player.clear_capture();
 
         self.sorted = true;
     }
@@ -113,15 +114,24 @@ impl Model {
         self.update_data.delta_time =
             self.update_data.last_frame.elapsed().as_secs_f32();
 
-        // update the player
         self.player.update(app, self.update_data);
+        self.color_wheel.update(app, self.update_data);
+        self.player.copy_arr_to(self.color_wheel.arr_mut());
+
+        self.ui.update_text(UiData {
+            algorithm: self.process.current_algorithm,
+            resolution: self.resolution,
+            speed: self.player.speed(),
+            num_voices: self.audio_voice_counter.load(Relaxed),
+            sorted: self.player.is_sorted(),
+        });
 
         self.update_data.last_frame = Instant::now();
     }
 
     /// Draws the app visuals to the provided `Draw` instance.
     pub fn draw(&self, draw: &Draw) {
-        self.color_wheel.draw(draw);
+        self.color_wheel.draw(draw, self.update_data);
         self.ui.draw(draw);
     }
 
@@ -129,13 +139,16 @@ impl Model {
 
     /// Forces the color wheel to be sorted via `std::sort_unstable`.
     pub fn force_sort(&mut self) {
+        self.player.clear_capture();
+        self.sort_arr
+            .prepare_for_sort(self.process.current_algorithm);
         self.sort_arr.force_sort();
-        self.player.set_capture(self.sort_arr.dump_capture());
+        self.player.set_capture(self.sort_arr.create_capture());
     }
 
     /// Returns `true` if the sorting array is correctly sorted.
     pub fn is_sorted(&self) -> bool {
-        self.sort_arr.is_sorted()
+        self.player.is_sorted()
     }
 
     pub fn compute(&mut self) {
@@ -147,7 +160,9 @@ impl Model {
         self.process.sort(&mut self.sort_arr);
 
         // dump the captured data to the player
-        self.player.set_capture(self.sort_arr.dump_capture());
+        self.player.set_capture(self.sort_arr.create_capture());
+
+        self.player.play();
     }
 
     /// Starts a shuffle.
@@ -157,11 +172,23 @@ impl Model {
         self.process.set_algorithm(SortingAlgorithm::Shuffle);
         self.compute();
         self.process.set_algorithm(algo);
+    }
 
-        self.player.play();
+    pub fn increase_speed(&mut self) {
+        let speed = self.player.speed();
+        self.player.set_speed((speed + 0.02).min(5.0));
+    }
+
+    pub fn decrease_speed(&mut self) {
+        let speed = self.player.speed();
+        self.player.set_speed((speed - 0.02).max(-5.0));
     }
 
     pub fn play(&mut self) {
+        if self.player.at_end() {
+            self.player.stop();
+        }
+
         self.player.play();
     }
 
@@ -221,9 +248,9 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         // decrease res
         Key::Underline | Key::Minus => model.decrease_resolution(),
         // increase speed
-        // Key::Period => model.increase_speed(),
+        Key::Period => model.increase_speed(),
         // decrease speed
-        // Key::Comma => model.decrease_speed(),
+        Key::Comma => model.decrease_speed(),
         // "force-sort"
         Key::F => {
             println!("Forcing-sorting the wheel...");

@@ -24,32 +24,28 @@ impl Ui {
     }
 
     pub fn update_text(&mut self, data: UiData) {
-        // let UiData {
-        //     algorithm,
-        //     // results,
-        //     resolution,
-        //     speed,
-        //     num_voices,
-        //     sorted,
-        // } = data;
-        //
-        // text
+        let UiData {
+            algorithm,
+            // results,
+            resolution,
+            speed,
+            num_voices,
+            sorted,
+        } = data;
+
         // let SortResults { writes, reads, swaps, comparisons } = results;
-        // let algo = format!("Algorithm: {algorithm}",);
-        // let res = format!("{resolution} segments");
-        // let sorted = format!("Sorted: {}", if sorted { "yes" } else { "no" });
-        // let info = format!("Writes: {writes}, reads: {reads}, swaps: {swaps}, comparisons: {comparisons}");
-        // let speed = format!(
-        //     "Speed: {speed:.2}x ({} iterations per second)",
-        //     (algorithm.speed() as f32 * speed) as u32
-        // );
-        // let voices = format!(
-        //     "Active audio voices: {num_voices}/{}",
-        //     super::audio::NUM_VOICES
-        // );
-        //
-        // self.text =
-        //     format!("{algo}\n{res}\n{info}\n{speed}\n{sorted}\n{voices}");
+        let algo = format!("Algorithm: {algorithm}",);
+        let res = format!("{resolution} segments");
+        let sorted = format!("Sorted: {}", if sorted { "yes" } else { "no" });
+        // let info = format!("Writes: {writes}, reads: {reads}, swaps: {swaps},
+        // comparisons: {comparisons}");
+        let speed = format!("Speed: {speed:.2}x");
+        let voices = format!(
+            "Active audio voices: {num_voices}/{}",
+            super::audio::NUM_VOICES
+        );
+
+        self.text = format!("{algo}\n{res}\n{speed}\n{sorted}\n{voices}");
     }
 
     pub fn draw(&self, draw: &Draw) {

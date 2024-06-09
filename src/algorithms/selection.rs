@@ -24,7 +24,23 @@ impl Selection {
 
 impl SortAlgorithm for Selection {
     fn process(&mut self, arr: &mut SortArray) {
-        todo!();
+        let n = arr.len();
+        let mut min_idx = 0;
+
+        for i in 0..(n - 1) {
+            min_idx = i;
+
+            for j in (i + 1)..n {
+                if arr.cmp(j, min_idx, Ordering::Less) {
+                    min_idx = j;
+                }
+            }
+
+            if min_idx != i {
+                arr.swap(min_idx, i);
+            }
+        }
+
     }
 
     // fn step(&mut self, arr: &mut SortArray) {

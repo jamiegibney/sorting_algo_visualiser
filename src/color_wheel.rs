@@ -71,76 +71,36 @@ impl ColorWheel {
         self.set_color_array();
     }
 
-    /// Updates the color wheel from the sorting array (see
-    /// [`Self::sort_arr_ref`]).
-    pub fn update(&mut self, arr: &[usize]) {
-        self.color_indices.copy_from_slice(arr);
-        self.overlay_colors.fill(None);
-    }
-
     /// Sets any overlay colors from a set of operations.
-    pub fn overlay_from(&mut self, operations: Vec<SortOperation>) {
-        for op in operations {
-            match op {
-                SortOperation::Compare { a, b, res } => {
-                    if res {
-                        self.overlay_colors[a] =
-                            Some(Overlay::Override(COMPARE_COLOR));
-                        self.overlay_colors[b] =
-                            Some(Overlay::Override(COMPARE_COLOR));
-                    }
-                }
-                SortOperation::Swap { a, b } => {
-                    self.overlay_colors[a] = Some(Overlay::Darken);
-                    self.overlay_colors[b] = Some(Overlay::Darken);
-                }
-                SortOperation::Write { idx, value } => {
-                    self.overlay_colors[idx] = Some(Overlay::Darken);
-                }
-                SortOperation::Read { idx } => {
-                    self.overlay_colors[idx] =
-                        Some(Overlay::Override(COMPARE_COLOR));
-                }
-                SortOperation::Noop => (),
-            }
-        }
-    }
+    // pub fn overlay_from(&mut self, operations: Vec<SortOperation>) {
+    //     for op in operations {
+    //         match op {
+    //             SortOperation::Compare { a, b, res } => {
+    //                 if res {
+    //                     self.overlay_colors[a] =
+    //                         Some(Overlay::Override(COMPARE_COLOR));
+    //                     self.overlay_colors[b] =
+    //                         Some(Overlay::Override(COMPARE_COLOR));
+    //                 }
+    //             }
+    //             SortOperation::Swap { a, b } => {
+    //                 self.overlay_colors[a] = Some(Overlay::Darken);
+    //                 self.overlay_colors[b] = Some(Overlay::Darken);
+    //             }
+    //             SortOperation::Write { idx, value } => {
+    //                 self.overlay_colors[idx] = Some(Overlay::Darken);
+    //             }
+    //             SortOperation::Read { idx } => {
+    //                 self.overlay_colors[idx] =
+    //                     Some(Overlay::Override(COMPARE_COLOR));
+    //             }
+    //             SortOperation::Noop => (),
+    //         }
+    //     }
+    // }
 
-    /// Draws the color wheel to the provided `Draw` instance.
-    pub fn draw(&self, draw: &Draw) {
-        draw.mesh()
-            .indexed_colored(
-                (0..self.resolution() * 3).map(|i| {
-                    let color_idx = self.color_indices[i / 3];
-
-                    let mut color = self.overlay_colors[color_idx].map_or(
-                        self.colors[color_idx],
-                        |o| match o {
-                            Overlay::Override(c) => c,
-                            Overlay::Invert => {
-                                Self::invert_color(self.colors[color_idx])
-                            }
-                            Overlay::Darken => {
-                                Self::darken_color(self.colors[color_idx])
-                            }
-                        },
-                    );
-
-                    if i % 3 == 0 {
-                        (self.vertices[0], color)
-                    }
-                    else if i % 3 == 1 {
-                        (self.vertices[i / 3 + 1], color)
-                    }
-                    else {
-                        let off = i / 3 + 2;
-                        let idx = if off > self.resolution() { 1 } else { off };
-                        (self.vertices[idx], color)
-                    }
-                }),
-                self.indices.iter().copied(),
-            )
-            .xy(Vec2::ZERO);
+    pub fn arr_mut(&mut self) -> &mut [usize] {
+        &mut self.color_indices
     }
 
     /// Precomputes the positions of all of the circle's vertices.
@@ -186,6 +146,50 @@ impl ColorWheel {
         color.blue *= 0.7;
 
         color
+    }
+}
+
+impl Updatable for ColorWheel {
+    fn update(&mut self, app: &App, update: UpdateData) {
+        self.overlay_colors.fill(None);
+    }
+}
+
+impl Drawable for ColorWheel {
+    fn draw(&self, draw: &Draw, update: UpdateData) {
+        draw.mesh()
+            .indexed_colored(
+                (0..self.resolution() * 3).map(|i| {
+                    let color_idx = self.color_indices[i / 3];
+
+                    let mut color = self.overlay_colors[color_idx].map_or(
+                        self.colors[color_idx],
+                        |o| match o {
+                            Overlay::Override(c) => c,
+                            Overlay::Invert => {
+                                Self::invert_color(self.colors[color_idx])
+                            }
+                            Overlay::Darken => {
+                                Self::darken_color(self.colors[color_idx])
+                            }
+                        },
+                    );
+
+                    if i % 3 == 0 {
+                        (self.vertices[0], color)
+                    }
+                    else if i % 3 == 1 {
+                        (self.vertices[i / 3 + 1], color)
+                    }
+                    else {
+                        let off = i / 3 + 2;
+                        let idx = if off > self.resolution() { 1 } else { off };
+                        (self.vertices[idx], color)
+                    }
+                }),
+                self.indices.iter().copied(),
+            )
+            .xy(Vec2::ZERO);
     }
 }
 

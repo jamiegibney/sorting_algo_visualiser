@@ -12,7 +12,7 @@ pub use nannou::prelude::*;
 pub use nannou_audio::Buffer;
 pub use sorting::*;
 pub use std::f32::consts::{FRAC_PI_2, TAU};
-pub use std::sync::atomic::AtomicU32;
+pub use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 pub use std::time::Instant;
 pub use std::{
     cmp::Ordering,

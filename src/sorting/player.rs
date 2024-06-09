@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::rc::Rc;
+use std::{os::unix::fs::DirBuilderExt, rc::Rc};
 
 #[derive(Debug)]
 struct AudioState {
@@ -22,7 +22,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub const DEFAULT_PLAYBACK_TIME: f32 = 5.0;
+    pub const DEFAULT_PLAYBACK_TIME: f32 = 2.0;
 
     pub fn new(
         len: usize,
@@ -50,9 +50,14 @@ impl Player {
     }
 
     /// Removes the player's current `SortCapture`.
-    pub fn reset_capture(&mut self) {
+    pub fn clear_capture(&mut self) {
         self.is_playing = false;
         self.capture = None;
+    }
+
+    /// Whether the player currently has a capture loaded.
+    pub const fn has_capture(&self) -> bool {
+        self.capture.is_some()
     }
 
     /// The time it takes for the player to complete the array playback from
@@ -73,13 +78,18 @@ impl Player {
         self.playback_time = Self::DEFAULT_PLAYBACK_TIME;
     }
 
+    /// The speed multiplier of the player.
+    pub const fn speed(&self) -> f32 {
+        self.speed_mult
+    }
+
     /// Sets the playback speed. This acts as a multiplier to
     /// [`Self::playback_time`].
     pub fn set_speed(&mut self, speed: f32) {
         self.speed_mult = speed;
     }
 
-    /// Resets the speed multiplier, honouring [`Self::playback_time`].
+    /// Resets the speed multiplier, honoring [`Self::playback_time`].
     pub fn reset_speed(&mut self) {
         self.speed_mult = 1.0;
     }
@@ -99,8 +109,13 @@ impl Player {
         self.is_playing = false;
 
         if let Some(cap) = self.capture.as_mut() {
-            _ = cap.set_progress(0.0);
+            cap.reset_progress();
         }
+    }
+
+    /// Whether the player is at the end of the capture.
+    pub fn at_end(&self) -> bool {
+        self.capture.as_ref().map_or(false, |c| c.is_done())
     }
 
     /// Whether the player is playing.
@@ -108,13 +123,16 @@ impl Player {
         self.is_playing
     }
 
+    pub fn is_sorted(&self) -> bool {
+        self.capture.as_ref().map_or(false, |c| c.is_sorted())
+    }
+
     /// Copies the internal array state to the provided array.
     ///
     /// # Panics
     ///
     /// Panics if `arr.len()` is not equal to the capture's array length.
-    pub fn update_arr(&mut self, arr: &mut [usize]) {
-        // assert!(self.capture.is_some(), "no valid capture is available");
+    pub fn copy_arr_to(&mut self, arr: &mut [usize]) {
         if (self.capture.is_none()) {
             return;
         }
@@ -201,6 +219,7 @@ impl Updatable for Player {
         let cap = unsafe { self.capture.as_mut().unwrap_unchecked() };
 
         if cap.is_done() {
+            println!("finished playing sort");
             self.is_playing = false;
             return;
         }

@@ -17,7 +17,7 @@ use bubble::Bubble;
 use insertion::Insertion;
 use radix::*;
 use selection::Selection;
-use shuffle::Scramble;
+use shuffle::Shuffle;
 
 pub trait SortAlgorithm: Debug {
     fn process(&mut self, arr: &mut SortArray);
@@ -30,7 +30,6 @@ pub enum SortingAlgorithm {
     RadixLSD2,
     RadixLSD4,
     RadixLSD5,
-    #[default]
     RadixLSD10,
     InPlaceRadixLSD4,
     InPlaceRadixLSD10,
@@ -38,6 +37,7 @@ pub enum SortingAlgorithm {
     RadixMSD10,
 
     Bogo,
+    #[default]
     Bubble,
     Selection,
     Insertion,
@@ -128,7 +128,7 @@ impl Algorithms {
             (SA::Bubble, Box::new(Bubble::new())),
             (SA::Selection, Box::new(Selection::new())),
             (SA::Insertion, Box::new(Insertion::new())),
-            (SA::Shuffle, Box::new(Scramble::new())),
+            (SA::Shuffle, Box::new(Shuffle::new())),
         ];
 
         Self { algos: HashMap::from(arr) }

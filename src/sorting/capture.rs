@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 pub struct SortCapture {
-    /// The initial state of the array.
+    ///  The initial state of the array.
     initial_array: Vec<usize>,
     /// The list of operations.
     operations: Vec<SortOperation>,
@@ -17,9 +17,9 @@ pub struct SortCapture {
     algorithm: SortingAlgorithm,
 
     /// The current position in the operation buffer.
-    counter: usize,
+    cursor: usize,
     /// The previous position in the operation buffer.
-    counter_last: usize,
+    cursor_last: usize,
 }
 
 impl SortCapture {
@@ -43,8 +43,8 @@ impl SortCapture {
 
             algorithm,
 
-            counter: 0,
-            counter_last: 0,
+            cursor: 0,
+            cursor_last: 0,
         }
     }
 
@@ -55,17 +55,18 @@ impl SortCapture {
 
     /// The operation at the current playback position.
     pub fn current_operation(&self) -> SortOperation {
-        self.operations[self.counter]
+        self.operations[self.cursor]
     }
 
-    /// The current state of the array.
+    /// The internal array.
     pub fn arr(&self) -> &[usize] {
         &self.scratch
     }
 
     /// The number of elements in the array.
     pub fn len(&self) -> usize {
-        self.initial_array.len()
+        self.scratch.len()
+        // self.initial_array.len()
     }
 
     /// Whether the array is currently sorted.
@@ -79,14 +80,14 @@ impl SortCapture {
     }
 
     pub fn is_done(&self) -> bool {
-        self.counter == self.initial_array.len() - 1
+        self.cursor == self.operations.len()
     }
 
     /// Returns the current progress of the sorting process as a value between
     /// `0.0` and `1.0`.
     pub fn playback_progress(&self) -> f32 {
-        let n = (self.initial_array.len() - 1) as f32;
-        self.counter as f32 / n
+        let n = (self.operations.len() - 1) as f32;
+        self.cursor as f32 / n
     }
 
     /// Sets the "playback progress" of the capture, and returns a slice of the
@@ -96,39 +97,42 @@ impl SortCapture {
     /// the buffer — i.e., if the progress is rewound, then the operations in
     /// the slice are still ordered going forward.
     #[must_use]
-    pub fn set_progress(&mut self, mut progress: f32) -> Rc<[SortOperation]> {
-        progress = progress.clamp(0.0, 1.0);
-        let n = (self.initial_array.len() - 1) as f32;
+    pub fn set_progress(&mut self, progress: f32) -> Rc<[SortOperation]> {
+        if self.operations.is_empty() {
+            return [].into();
+        }
 
-        let curr = self.counter;
-        let last = self.counter_last;
+        self.cursor_last = self.cursor;
 
-        self.counter = (progress * n).round() as usize;
+        let n = self.operations.len() as f32;
+
+        self.cursor = (progress.clamp(0.0, 1.0) * n) as usize;
         self.set_arr();
 
-        self.operations[match curr.cmp(&last) {
-            Ordering::Less => curr..last,
-            // useless lint as its suggestion doesn't compile
-            #[allow(clippy::range_plus_one)]
-            Ordering::Equal => curr..curr + 1,
-            Ordering::Greater => last..curr,
+        self.operations[match self.cursor.cmp(&self.cursor_last) {
+            Ordering::Less => self.cursor..self.cursor_last,
+            Ordering::Equal => (self.cursor - 1)..self.cursor,
+            Ordering::Greater => self.cursor_last..self.cursor,
         }]
         .into()
     }
 
+    pub fn reset_progress(&mut self) {
+        self.scratch.copy_from_slice(&self.initial_array);
+        self.write_stack.clear();
+        self.cursor = 0;
+        self.cursor_last = 0;
+    }
+
     fn set_arr(&mut self) {
-        let mut tmp_counter = self.counter_last;
+        if self.cursor_last == self.cursor {
+            return;
+        }
 
-        let (num_ops, rewind) = {
-            match self.counter.cmp(&self.counter_last) {
-                Ordering::Less => (self.counter_last - self.counter, true),
-                Ordering::Equal => return,
-                Ordering::Greater => (self.counter - self.counter_last, false),
-            }
-        };
+        let rewind = self.cursor < self.cursor_last;
 
-        for _ in 0..num_ops {
-            match self.operations.get(tmp_counter).copied() {
+        let mut update_arr = |i: usize| {
+            match self.operations.get(i).copied() {
                 Some(SortOperation::Write { idx, value }) => {
                     if rewind {
                         // if we're rewinding (i.e. undoing), then we need to
@@ -147,17 +151,21 @@ impl SortCapture {
                     self.scratch.swap(a, b);
                 }
 
+                None => panic!(),
+
                 _ => {}
             }
+        };
 
-            if rewind {
-                tmp_counter -= 1;
-            }
-            else {
-                tmp_counter += 1;
+        if rewind {
+            for i in (self.cursor..self.cursor_last).rev() {
+                update_arr(i);
             }
         }
-
-        self.counter_last = self.counter;
+        else {
+            for i in self.cursor_last..self.cursor {
+                update_arr(i);
+            }
+        }
     }
 }

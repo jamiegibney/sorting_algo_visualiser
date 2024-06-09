@@ -39,41 +39,7 @@ impl Process {
     }
 
     /// Processes the currently-selected algorithm if it can.
-    ///
-    /// Returns `true` if the algorithm has finished sorting *and* the process
-    /// is running.
-    pub fn sort(&mut self, arr: &mut SortArray) -> bool {
-        todo!()
-        // if matches!(self.current_algorithm, SortingAlgorithm::Shuffle) {
-        //     speed = 1.0;
-        // }
-        // let delta_time = self.last.elapsed().as_secs_f32() * speed;
-        // self.iters_last_update = 0;
-        // self.last = Instant::now();
-        //
-        // if self.running {
-        //     if self.algorithms.finished(self.current_algorithm) {
-        //         // if the algorithm has finished and we want to run, reset it
-        //         // before starting again.
-        //         self.algorithms.reset(self.current_algorithm);
-        //     }
-        // }
-        // else {
-        //     // if the process isn't running...
-        //     return false;
-        // }
-        //
-        // // progress the algorithm...
-        // self.algorithms
-        //     .progress(self.current_algorithm, delta_time, arr);
-        //
-        // // if we've just sorted the slice...
-        // if self.algorithms.finished(self.current_algorithm) {
-        //     self.stop();
-        //     return true;
-        // }
-        //
-        // // if the slice has yet to be sorted...
-        // false
+    pub fn sort(&mut self, arr: &mut SortArray) {
+        self.algorithms.process(self.current_algorithm, arr);
     }
 }
