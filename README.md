@@ -8,6 +8,8 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 
 ## TODO
 
+- [ ] Handle the case where the sorting thread panics — ideally a message should be sent and the thread respawned.
+
 - [ ] Instead of computing each algorithm in discrete steps, "record" their operations on the main array, and then play that back at whatever rate is appropriate.
 - [ ] Add new sorting algorithms
     - [ ] Merge sort
