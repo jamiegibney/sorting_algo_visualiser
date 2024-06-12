@@ -42,7 +42,6 @@ impl SortAlgorithm for Cycle {
                 for i in (start + 1)..n {
                     if arr.cmp(i, start, Ordering::Less) {
                         pos += 1;
-                        // println!("element {i} is less than element {start} (pos {pos})");
                     }
                 }
 
@@ -51,12 +50,10 @@ impl SortAlgorithm for Cycle {
                 }
 
                 while arr.cmp(start, pos, Ordering::Equal) {
-                    // println!("dup element; skipping (start {start} pos {pos})");
                     pos += 1;
                 }
 
                 if !arr.cmp(start, pos, Ordering::Equal) {
-                    // println!("swapping {start} and {pos}");
                     arr.swap(start, pos);
                 }
             }

@@ -115,16 +115,16 @@ impl VoiceHandler {
 
     /// Starts a new voice.
     pub fn new_voice(&mut self, freq: f32, amp: f32) {
+        #[allow(clippy::enum_glob_use)]
+        use OverrideVoiceBehavior::*;
         // println!("Spawning new voice at frequency {freq} Hz");
 
         if let Some(free_idx) = self.voices.iter().position(Option::is_none) {
-            // self.create_voice() is inlined here in case no voices are free (in
-            // which case no new voice is ever created)
+            // self.create_voice() is inlined here in case no voices are free
+            // (in which case no new voice is ever created)
             self.voices[free_idx] = Some(self.create_voice(freq, amp));
             return;
         }
-
-        use OverrideVoiceBehavior::*;
 
         if matches!(self.override_behavior, DoNotReplace) {
             return;

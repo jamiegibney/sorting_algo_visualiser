@@ -199,10 +199,6 @@ impl Model {
         self.sort_arr
             .lock()
             .prepare_for_sort(self.current_algorithm.load(Relaxed));
-        println!(
-            "preparing with algo {}",
-            self.current_algorithm.load(Relaxed)
-        );
 
         let player = Arc::clone(&self.player);
         let arr = Arc::clone(&self.sort_arr);
@@ -324,11 +320,6 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         Key::F => {
             println!("Forcing-sorting the wheel...");
             model.force_sort();
-        }
-        // "verify"
-        Key::V => {
-            let s = if model.is_sorted() { "" } else { "NOT " };
-            println!("The array is {s}correctly sorted.");
         }
         _ => {}
     }

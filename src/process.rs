@@ -31,7 +31,6 @@ impl Process {
 
     /// Processes the currently-selected algorithm if it can.
     pub fn sort(&mut self, arr: &mut SortArray) {
-        println!("sorting with algo {}", self.current_algorithm.load(Relaxed));
         self.algorithms
             .process(self.current_algorithm.load(Relaxed), arr);
     }

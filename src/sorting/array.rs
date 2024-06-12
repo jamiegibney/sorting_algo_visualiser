@@ -120,12 +120,6 @@ impl SortArray {
     /// its internal state after creating a capture. If you don't need this
     /// behavior, use [`Self::dump_capture`] instead.
     pub fn create_capture(&self) -> SortCapture {
-        println!(
-            "arr len {} | op buf len {}",
-            self.initial_arr.len(),
-            self.op_buffer.len()
-        );
-
         SortCapture::create(
             self.initial_arr.clone(),
             self.op_buffer.as_slice().into(),

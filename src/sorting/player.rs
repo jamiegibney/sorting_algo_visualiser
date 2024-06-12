@@ -228,7 +228,7 @@ impl Updatable for Player {
         let cap = unsafe { self.capture.as_mut().unwrap_unchecked() };
 
         if cap.is_done() {
-            println!("finished playing sort");
+            println!("Sorting done");
             self.ops_last_frame = [].into();
             self.is_playing = false;
             return;
