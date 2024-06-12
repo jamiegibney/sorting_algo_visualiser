@@ -24,7 +24,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub const DEFAULT_PLAYBACK_TIME: f32 = 2.0;
+    pub const DEFAULT_PLAYBACK_TIME: f32 = 3.0;
 
     pub fn new(
         len: usize,
@@ -193,13 +193,16 @@ impl Player {
         });
     }
 
-    fn map_freq(average_idx: f32) -> f32 {
-        const MIN_NOTE: f32 = 48.0;
+    fn map_freq(freq: f32) -> f32 {
+        const MIN_NOTE: f32 = 36.0;
         const MAX_NOTE: f32 = 112.0;
 
-        let x = average_idx.clamp(0.0, 1.0).powf(1.5);
+        // let x = freq.clamp(0.0, 1.0).powf(1.1);
+        // let x = 1.0 - (1.0 - freq.clamp(0.0, 1.0)).powf(1.2);
+        let n = 3.0;
+        let x = ((n - 1.0) * freq.clamp(0.0, 1.0) + 1.0).log(n);
         let note = (MAX_NOTE - MIN_NOTE).mul_add(x, MIN_NOTE).round();
-        let quantized = Audio::quantize_to_scale(&MAJ_PENTATONIC, note, 63.0);
+        let quantized = Audio::quantize_to_scale(&MAJOR_SCALE, note, 63.0);
 
         Audio::note_to_freq(quantized)
     }
@@ -228,13 +231,19 @@ impl Updatable for Player {
         let cap = unsafe { self.capture.as_mut().unwrap_unchecked() };
 
         if cap.is_done() {
-            println!("Sorting done");
+            // println!("Sorting done");
             self.ops_last_frame = [].into();
             self.is_playing = false;
             return;
         }
 
-        let progress_per_second = self.playback_time.recip() * self.speed_mult;
+        let progress_per_second =
+            if matches!(cap.algorithm(), SortingAlgorithm::Shuffle) {
+                0.5
+            }
+            else {
+                self.playback_time.recip() * self.speed_mult
+            };
         let progress_per_frame = progress_per_second * update.delta_time;
 
         let curr_progress = cap.playback_progress();
@@ -242,8 +251,8 @@ impl Updatable for Player {
         self.ops_last_frame =
             cap.set_progress(curr_progress + progress_per_frame);
 
-        let audio_ops_this_frame = (MAX_AUDIO_NOTES_PER_SECOND as f32
-            * update.delta_time) as usize;
+        let audio_ops_this_frame =
+            (MAX_AUDIO_NOTES_PER_SECOND as f32 * update.delta_time) as usize;
 
         // post audio messages
         for &op in self.ops_last_frame.iter().take(audio_ops_this_frame) {

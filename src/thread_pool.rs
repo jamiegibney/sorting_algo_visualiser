@@ -15,18 +15,21 @@ type Job = Box<dyn FnMut() + Send + 'static>;
 /// A general-purpose thread pool.
 ///
 /// You can use this as a way of performing work asynchronously on however
-/// many threads you need. See the [`wait_until_done()`](ThreadPool::wait_until_done)
-/// method if you need to wait for all jobs to be finished until continuing.
+/// many threads you need. See the
+/// [`block_until_free()`](ThreadPool::block_until_free) method if you need to
+/// wait for all jobs to be finished until continuing.
 ///
 /// When calling the [`execute()`](ThreadPool::execute) method, the pool will
 /// send the job down a channel where it is queued, and then the next thread
 /// to try to receive from the channel will unwrap and process it.
 ///
 /// It is possible to see the number of currently-queued jobs, or number of
-/// idle worker threads, at any given time using the [`queued_jobs()`](ThreadPool::queued_jobs)
+/// idle worker threads, at any given time using the
+/// [`queued_jobs()`](ThreadPool::queued_jobs)
 /// and [`num_idle()`](ThreadPool::num_idle) methods.
 ///
-/// The pool will automatically clean up and join all worker threads when it is dropped.
+/// The pool will automatically clean up and join all worker threads when it is
+/// dropped.
 #[derive(Debug)]
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -48,7 +51,11 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize, receiver: ReceiverArc, queue: Arc<AtomicUsize>) -> IoResult<Self> {
+    fn new(
+        id: usize,
+        receiver: ReceiverArc,
+        queue: Arc<AtomicUsize>,
+    ) -> IoResult<Self> {
         let builder = thread::Builder::new();
 
         let is_idle = Arc::new(AtomicBool::new(true));
@@ -77,11 +84,7 @@ impl Worker {
             job();
         })?;
 
-        Ok(Self {
-            _id: id,
-            thread: Some(thread),
-            is_idle,
-        })
+        Ok(Self { _id: id, thread: Some(thread), is_idle })
     }
 
     fn join(&mut self) {
@@ -116,22 +119,19 @@ impl ThreadPool {
             }
         }
 
-        Ok(Self {
-            workers,
-            sender: Some(sender),
-            queue,
-        })
+        Ok(Self { workers, sender: Some(sender), queue })
     }
 
     /// Sends a closure to the thread pool, which adds it to a queue where it
     /// may be processed by one of the worker threads.
     ///
-    /// This function does not guarantee that the provided closure will be processed
-    /// immediately.
+    /// This function does not guarantee that the provided closure will be
+    /// processed immediately.
     ///
     /// # See also
-    /// [`wait_until_done()`](Self::wait_until_done) - use this method if you need
-    /// to ensure that all worker threads finish the jobs you provide before continuing.
+    /// [`wait_until_done()`](Self::wait_until_done) - use this method if you
+    /// need to ensure that all worker threads finish the jobs you provide
+    /// before continuing.
     #[allow(clippy::missing_panics_doc)]
     pub fn execute<F>(&self, f: F)
     where
@@ -144,7 +144,7 @@ impl ThreadPool {
     /// Blocks the calling thread until all worker threads are idle. Use this
     /// method if you need to ensure that all worker threads finish the jobs
     /// you have provided before continuing.
-    pub fn wait_until_done(&self) {
+    pub fn block_until_free(&self) {
         loop {
             if self.is_idle() {
                 break;
@@ -152,9 +152,11 @@ impl ThreadPool {
         }
     }
 
-    /// Returns whether all of the `ThreadPool`'s worker threads are idle or not.
+    /// Returns whether all of the `ThreadPool`'s worker threads are idle or
+    /// not.
     pub fn is_idle(&self) -> bool {
-        self.workers.iter().all(|w| w.is_idle.load(Relaxed)) && self.queued_jobs() == 0
+        self.workers.iter().all(|w| w.is_idle.load(Relaxed))
+            && self.queued_jobs() == 0
     }
 
     /// Returns the number of idle worker threads in the `ThreadPool`.

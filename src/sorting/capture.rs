@@ -127,7 +127,9 @@ impl SortCapture {
     }
 
     pub fn is_done(&self) -> bool {
-        self.cursor == self.operations.len()
+        let res = self.cursor == self.operations.len();
+        // println!("done: {res}");
+        res
     }
 
     /// Returns the current progress of the sorting process as a value between
@@ -153,7 +155,13 @@ impl SortCapture {
 
         let n = self.operations.len() as f32;
 
-        self.cursor = (progress.clamp(0.0, 1.0) * n) as usize;
+        self.cursor = if progress >= 1.0 - f32::EPSILON {
+            self.operations.len()
+        }
+        else {
+            (progress.clamp(0.0, 1.0) * n) as usize
+        };
+
         self.set_arr();
 
         // FIXME: please fix this

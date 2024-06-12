@@ -1,9 +1,9 @@
 use super::*;
 use atomic::Atomic;
 use bytemuck::NoUninit;
+use crossbeam_channel::Receiver;
 use nannou_audio::*;
 use std::sync::atomic::AtomicU32;
-use crossbeam_channel::Receiver;
 use std::time::Instant;
 
 mod effects;
@@ -16,8 +16,10 @@ mod voice;
 use effects::*;
 pub use voice::{VoiceHandler, NUM_VOICES};
 
-pub const MAJ_PENTATONIC: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
-pub const MIN_PENTATONIC: [f32; 5] = [0.0, 3.0, 5.0, 7.0, 10.0];
+pub const MAJ_PENT_SCALE: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
+pub const MIN_PENT_SCALE: [f32; 5] = [0.0, 3.0, 5.0, 7.0, 10.0];
+pub const MAJOR_SCALE: [f32; 7] = [0.0, 2.0, 4.0, 5.0, 7.0, 9.0, 11.0];
+pub const MINOR_SCALE: [f32; 7] = [0.0, 2.0, 3.0, 5.0, 7.0, 8.0, 10.0];
 
 /// The default sample rate.
 pub const SAMPLE_RATE: u32 = 48000;
@@ -121,7 +123,8 @@ impl Audio {
         self.running = true;
     }
 
-    /// Calculates the frequency value of the provided MIDI note value, relative to 440 Hz.
+    /// Calculates the frequency value of the provided MIDI note value, relative
+    /// to 440 Hz.
     #[inline]
     pub fn note_to_freq(note_value: f32) -> f32 {
         const TUNING_FREQ_HZ: f32 = 440.0;

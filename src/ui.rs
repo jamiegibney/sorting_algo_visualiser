@@ -53,7 +53,7 @@ impl Ui {
         let sorted = format!("Sorted: {}", if sorted { "yes" } else { "no" });
         let speed = format!(
             "Speed: {speed:.2}x ({:.2}s playback time)",
-            player_time * speed
+            player_time * speed.recip()
         );
         let voices = format!(
             "Active audio voices: {num_voices}/{}",
