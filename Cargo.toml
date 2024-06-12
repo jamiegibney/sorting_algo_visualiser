@@ -11,6 +11,8 @@ bytemuck = "1.16.0"
 crossbeam-channel = "0.5.12"
 nannou = "0.19.0"
 nannou_audio = "0.19.0"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
 
 [profile.dev]
 debug = "line-tables-only"
