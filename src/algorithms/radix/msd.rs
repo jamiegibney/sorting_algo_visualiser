@@ -11,7 +11,7 @@ impl RadixMSD {
     }
 }
 
-impl SortAlgorithm for RadixMSD {
+impl SortProcessor for RadixMSD {
     fn process(&mut self, arr: &mut SortArray) {
         unimplemented!();
     }

@@ -32,7 +32,7 @@ impl Shuffle {
     }
 }
 
-impl SortAlgorithm for Shuffle {
+impl SortProcessor for Shuffle {
     fn process(&mut self, arr: &mut SortArray) {
         let len = arr.len();
 

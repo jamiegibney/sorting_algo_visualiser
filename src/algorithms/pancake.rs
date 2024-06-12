@@ -31,7 +31,7 @@ impl Pancake {
     }
 }
 
-impl SortAlgorithm for Pancake {
+impl SortProcessor for Pancake {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
 

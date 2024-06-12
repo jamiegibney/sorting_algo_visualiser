@@ -24,7 +24,7 @@ impl Heap {
     }
 }
 
-impl SortAlgorithm for Heap {
+impl SortProcessor for Heap {
     fn process(&mut self, arr: &mut SortArray) {
         let len = arr.len();
 

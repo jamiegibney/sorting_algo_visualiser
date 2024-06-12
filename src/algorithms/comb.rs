@@ -13,7 +13,7 @@ impl Comb {
     }
 }
 
-impl SortAlgorithm for Comb {
+impl SortProcessor for Comb {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
         let mut gap = n;

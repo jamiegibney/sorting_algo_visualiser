@@ -21,7 +21,7 @@ impl Bogo {
     }
 }
 
-impl SortAlgorithm for Bogo {
+impl SortProcessor for Bogo {
     fn process(&mut self, arr: &mut SortArray) {
         let len = arr.len();
 

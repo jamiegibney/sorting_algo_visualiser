@@ -26,7 +26,7 @@ impl Insertion {
     }
 }
 
-impl SortAlgorithm for Insertion {
+impl SortProcessor for Insertion {
     fn process(&mut self, arr: &mut SortArray) {
         let mut key = 0;
         let mut j = 0;

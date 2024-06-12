@@ -9,7 +9,7 @@ impl Cycle {
     }
 }
 
-impl SortAlgorithm for Cycle {
+impl SortProcessor for Cycle {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
 

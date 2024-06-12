@@ -13,7 +13,7 @@ impl RadixLSDInPlace {
     }
 }
 
-impl SortAlgorithm for RadixLSDInPlace {
+impl SortProcessor for RadixLSDInPlace {
     fn process(&mut self, arr: &mut SortArray) {
         unimplemented!();
         let mut pos = 0;

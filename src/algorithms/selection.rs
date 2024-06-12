@@ -22,7 +22,7 @@ impl Selection {
     }
 }
 
-impl SortAlgorithm for Selection {
+impl SortProcessor for Selection {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
         let mut min_idx = 0;

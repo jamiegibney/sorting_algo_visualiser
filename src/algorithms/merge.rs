@@ -75,7 +75,7 @@ impl Merge {
     }
 }
 
-impl SortAlgorithm for Merge {
+impl SortProcessor for Merge {
     fn process(&mut self, arr: &mut SortArray) {
         self.merge(arr, 0, arr.len() - 1);
     }

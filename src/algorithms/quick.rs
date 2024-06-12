@@ -35,7 +35,7 @@ impl QuickSort {
     }
 }
 
-impl SortAlgorithm for QuickSort {
+impl SortProcessor for QuickSort {
     fn process(&mut self, arr: &mut SortArray) {
         Self::sort(arr, 0, (arr.len() - 1) as isize);
     }

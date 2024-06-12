@@ -1,16 +1,16 @@
 use super::*;
 
 #[derive(Debug)]
-pub struct Timsort {}
+pub struct Timsort;
 
 impl Timsort {
-    pub fn new() -> Self {
-        Self {}
+    pub const fn new() -> Self {
+        Self
     }
 }
 
-impl SortAlgorithm for Timsort {
+impl SortProcessor for Timsort {
     fn process(&mut self, arr: &mut SortArray) {
-        //
+        unimplemented!();
     }
 }

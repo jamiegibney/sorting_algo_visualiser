@@ -9,7 +9,7 @@ impl Shell {
     }
 }
 
-impl SortAlgorithm for Shell {
+impl SortProcessor for Shell {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
         let mut gap = n / 2;

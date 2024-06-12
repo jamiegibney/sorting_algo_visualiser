@@ -13,7 +13,7 @@ impl Stooge {
             return;
         }
 
-        if arr.cmp(l, h, Ordering::Less) {
+        if arr.cmp(l, h, Ordering::Greater) {
             arr.swap(l, h);
         }
 
@@ -27,7 +27,7 @@ impl Stooge {
     }
 }
 
-impl SortAlgorithm for Stooge {
+impl SortProcessor for Stooge {
     fn process(&mut self, arr: &mut SortArray) {
         Self::sort(arr, 0, arr.len() - 1);
     }

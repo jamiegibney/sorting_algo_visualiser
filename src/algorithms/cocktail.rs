@@ -9,7 +9,7 @@ impl Cocktail {
     }
 }
 
-impl SortAlgorithm for Cocktail {
+impl SortProcessor for Cocktail {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
 

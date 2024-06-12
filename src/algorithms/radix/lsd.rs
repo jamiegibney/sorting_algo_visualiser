@@ -13,7 +13,7 @@ impl RadixLSD {
     }
 }
 
-impl SortAlgorithm for RadixLSD {
+impl SortProcessor for RadixLSD {
     fn process(&mut self, arr: &mut SortArray) {
         unimplemented!();
         let max_power = analyze(arr, &mut self.analysis, self.base);

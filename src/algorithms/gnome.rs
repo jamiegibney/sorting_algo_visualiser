@@ -9,7 +9,7 @@ impl Gnome {
     }
 }
 
-impl SortAlgorithm for Gnome {
+impl SortProcessor for Gnome {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
         let mut i = 0;

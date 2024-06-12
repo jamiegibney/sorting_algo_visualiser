@@ -10,6 +10,7 @@ use SortingAlgorithm as SA;
 mod bogo;
 mod bubble;
 mod bucket;
+mod counting;
 mod cocktail;
 mod comb;
 mod cycle;
@@ -20,6 +21,7 @@ mod merge;
 mod pancake;
 mod quick;
 mod radix;
+mod pigeonhole;
 mod selection;
 mod shell;
 mod shuffle;
@@ -27,6 +29,7 @@ mod stooge;
 mod timsort;
 
 use bogo::Bogo;
+use pigeonhole::Pigeonhole;
 use bubble::Bubble;
 use bucket::Bucket;
 use cocktail::Cocktail;
@@ -34,6 +37,7 @@ use comb::Comb;
 use cycle::Cycle;
 use gnome::Gnome;
 use heap::Heap;
+use counting::Counting;
 use insertion::Insertion;
 use merge::Merge;
 use pancake::Pancake;
@@ -46,7 +50,7 @@ use stooge::Stooge;
 use timsort::Timsort;
 
 /// Trait for sorting algorithms.
-pub trait SortAlgorithm: Debug + Send + Sync {
+pub trait SortProcessor: Debug + Send + Sync {
     /// The sorting process. This should mutate the provided array to "sort"
     /// it — however that is defined for the algorithm.
     fn process(&mut self, arr: &mut SortArray);
@@ -66,7 +70,6 @@ pub enum SortingAlgorithm {
 
     Bogo,
     Gnome,
-    #[default]
     Stooge,
     Bubble,
     Pancake,
@@ -76,6 +79,9 @@ pub enum SortingAlgorithm {
     Comb,
     Cocktail,
     Cycle,
+    Counting,
+    #[default]
+    Pigeonhole,
 
     Merge,
     Heap,
@@ -89,9 +95,7 @@ pub enum SortingAlgorithm {
     // Sleep,
     // Tag,
     // Tree,
-    // Counting,
     // Bingo,
-    // Pigeonhole,
     Shuffle,
 }
 
@@ -155,6 +159,8 @@ impl std::fmt::Display for SortingAlgorithm {
             Shell => write("Shell sort"),
             Comb => write("Comb sort"),
             Cocktail => write("Cocktail sort"),
+            Counting => write("Counting sort"),
+            Pigeonhole => write("Pigeonhole sort"),
             QuickSort => write("QuickSort"),
             Shuffle => write("Shuffle"),
         }
@@ -164,7 +170,7 @@ impl std::fmt::Display for SortingAlgorithm {
 /// A struct which dynamically dispatches to the correct sorting algorithm.
 #[derive(Debug)]
 pub struct Algorithms {
-    algos: HashMap<SortingAlgorithm, Box<dyn SortAlgorithm>>,
+    algos: HashMap<SortingAlgorithm, Box<dyn SortProcessor>>,
 }
 
 impl Algorithms {
@@ -173,7 +179,7 @@ impl Algorithms {
         let arr = [
             (
                 SA::RadixLSD2,
-                Box::new(RadixLSD::new(2)) as Box<dyn SortAlgorithm>,
+                Box::new(RadixLSD::new(2)) as Box<dyn SortProcessor>,
             ),
             (SA::RadixLSD4, Box::new(RadixLSD::new(4))),
             (SA::RadixLSD5, Box::new(RadixLSD::new(5))),
@@ -195,6 +201,8 @@ impl Algorithms {
             (SA::Comb, Box::new(Comb::new())),
             (SA::Cocktail, Box::new(Cocktail::new())),
             (SA::Cycle, Box::new(Cycle::new())),
+            (SA::Counting, Box::new(Counting::new())),
+            (SA::Pigeonhole, Box::new(Pigeonhole::new())),
             (SA::QuickSort, Box::new(QuickSort::new())),
             (SA::Shuffle, Box::new(Shuffle::new())),
         ];

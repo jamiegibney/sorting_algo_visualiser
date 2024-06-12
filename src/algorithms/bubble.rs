@@ -9,7 +9,7 @@ impl Bubble {
     }
 }
 
-impl SortAlgorithm for Bubble {
+impl SortProcessor for Bubble {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
         let mut any_swapped = false;
