@@ -8,6 +8,7 @@ use std::fmt::Debug;
 use SortingAlgorithm as SA;
 
 mod bogo;
+mod gnome;
 mod bubble;
 mod bucket;
 mod cocktail;
@@ -36,6 +37,7 @@ use radix::*;
 use selection::Selection;
 use shell::Shell;
 use shuffle::Shuffle;
+use gnome::Gnome;
 use timsort::Timsort;
 
 pub trait SortAlgorithm: Debug {
@@ -56,6 +58,7 @@ pub enum SortingAlgorithm {
     RadixMSD10,
 
     Bogo,
+    Gnome,
     Bubble,
     Selection,
     Insertion,
@@ -117,6 +120,7 @@ impl std::fmt::Display for SortingAlgorithm {
             SA::RadixMSD10 => f.write_str("MSD Radix sort, Base 10"),
             SA::Bogo => f.write_str("Bogosort"),
             SA::Bubble => f.write_str("Bubble sort"),
+            SA::Gnome => f.write_str("Gnome sort"),
             SA::Selection => f.write_str("Selection sort"),
             SA::Insertion => f.write_str("Insertion sort"),
             SA::Merge => f.write_str("Merge sort"),
@@ -150,6 +154,7 @@ impl Algorithms {
             (SA::RadixMSD4, Box::new(RadixMSD::new(4))),
             (SA::RadixMSD10, Box::new(RadixMSD::new(10))),
             (SA::Bogo, Box::new(Bogo::new())),
+            (SA::Gnome, Box::new(Gnome::new())),
             (SA::Bubble, Box::new(Bubble::new())),
             (SA::Selection, Box::new(Selection::new())),
             (SA::Insertion, Box::new(Insertion::new())),
