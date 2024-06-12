@@ -42,7 +42,10 @@ use shuffle::Shuffle;
 use stooge::Stooge;
 use timsort::Timsort;
 
+/// Trait for sorting algorithms.
 pub trait SortAlgorithm: Debug {
+    /// The sorting process. This should mutate the provided array to "sort"
+    /// it — however that is defined for the algorithm.
     fn process(&mut self, arr: &mut SortArray);
 }
 
@@ -118,45 +121,47 @@ impl SortingAlgorithm {
 }
 
 impl std::fmt::Display for SortingAlgorithm {
-    #[allow(clippy::use_self)]
+    #[allow(clippy::enum_glob_use)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use SortingAlgorithm::*;
+
+        let mut write = |s| f.write_str(s);
+
         match self {
-            SA::RadixLSD2 => f.write_str("LSD Radix sort, Base 2"),
-            SA::RadixLSD4 => f.write_str("LSD Radix sort, Base 4"),
-            SA::RadixLSD5 => f.write_str("LSD Radix sort, Base 5"),
-            SA::RadixLSD10 => f.write_str("LSD Radix sort, Base 10"),
-            SA::InPlaceRadixLSD4 => {
-                f.write_str("In-place LSD Radix sort, Base 4")
-            }
-            SA::InPlaceRadixLSD10 => {
-                f.write_str("In-place LSD Radix sort, Base 10")
-            }
-            SA::RadixMSD4 => f.write_str("MSD Radix sort, Base 4"),
-            SA::RadixMSD10 => f.write_str("MSD Radix sort, Base 10"),
-            SA::Bogo => f.write_str("Bogosort"),
-            SA::Bubble => f.write_str("Bubble sort"),
-            SA::Pancake => f.write_str("Pancake sort"),
-            SA::Gnome => f.write_str("Gnome sort"),
-            SA::Stooge => f.write_str("Stooge sort"),
-            SA::Selection => f.write_str("Selection sort"),
-            SA::Insertion => f.write_str("Insertion sort"),
-            SA::Merge => f.write_str("Merge sort"),
-            SA::Heap => f.write_str("Heap sort"),
-            SA::Shell => f.write_str("Shell sort"),
-            SA::Comb => f.write_str("Comb sort"),
-            SA::Cocktail => f.write_str("Cocktail sort"),
-            SA::QuickSort => f.write_str("QuickSort"),
-            SA::Shuffle => f.write_str("Shuffle"),
+            RadixLSD2 => write("LSD Radix sort, Base 2"),
+            RadixLSD4 => write("LSD Radix sort, Base 4"),
+            RadixLSD5 => write("LSD Radix sort, Base 5"),
+            RadixLSD10 => write("LSD Radix sort, Base 10"),
+            InPlaceRadixLSD4 => write("In-place LSD Radix sort, Base 4"),
+            InPlaceRadixLSD10 => write("In-place LSD Radix sort, Base 10"),
+            RadixMSD4 => write("MSD Radix sort, Base 4"),
+            RadixMSD10 => write("MSD Radix sort, Base 10"),
+            Bogo => write("Bogosort"),
+            Bubble => write("Bubble sort"),
+            Pancake => write("Pancake sort"),
+            Gnome => write("Gnome sort"),
+            Stooge => write("Stooge sort"),
+            Selection => write("Selection sort"),
+            Insertion => write("Insertion sort"),
+            Merge => write("Merge sort"),
+            Heap => write("Heap sort"),
+            Shell => write("Shell sort"),
+            Comb => write("Comb sort"),
+            Cocktail => write("Cocktail sort"),
+            QuickSort => write("QuickSort"),
+            Shuffle => write("Shuffle"),
         }
     }
 }
 
+/// A struct which dynamically dispatches to the correct sorting algorithm.
 #[derive(Debug)]
 pub struct Algorithms {
     algos: HashMap<SortingAlgorithm, Box<dyn SortAlgorithm>>,
 }
 
 impl Algorithms {
+    /// Creates and initializes all sorting algorithms.
     pub fn new() -> Self {
         let arr = [
             (
@@ -189,6 +194,8 @@ impl Algorithms {
         Self { algos: HashMap::from(arr) }
     }
 
+    /// Processes the provided array via the process implemented for
+    /// `algorithm`.
     pub fn process(
         &mut self,
         algorithm: SortingAlgorithm,
@@ -196,7 +203,7 @@ impl Algorithms {
     ) {
         self.algos
             .get_mut(&algorithm)
-            .expect("Failed to find algorithm in hashmap")
+            .expect("Failed to find algorithm in Algorithms HashMap")
             .process(arr);
     }
 }
