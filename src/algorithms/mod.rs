@@ -8,11 +8,11 @@ use std::fmt::Debug;
 use SortingAlgorithm as SA;
 
 mod bogo;
-mod gnome;
 mod bubble;
 mod bucket;
 mod cocktail;
 mod comb;
+mod gnome;
 mod heap;
 mod insertion;
 mod merge;
@@ -29,15 +29,17 @@ use bogo::Bogo;
 use bubble::Bubble;
 use cocktail::Cocktail;
 use comb::Comb;
+use gnome::Gnome;
 use heap::Heap;
 use insertion::Insertion;
 use merge::Merge;
+use pancake::Pancake;
 use quick::QuickSort;
 use radix::*;
 use selection::Selection;
 use shell::Shell;
 use shuffle::Shuffle;
-use gnome::Gnome;
+use stooge::Stooge;
 use timsort::Timsort;
 
 pub trait SortAlgorithm: Debug {
@@ -59,7 +61,9 @@ pub enum SortingAlgorithm {
 
     Bogo,
     Gnome,
+    Stooge,
     Bubble,
+    Pancake,
     Selection,
     Insertion,
     Merge,
@@ -120,7 +124,9 @@ impl std::fmt::Display for SortingAlgorithm {
             SA::RadixMSD10 => f.write_str("MSD Radix sort, Base 10"),
             SA::Bogo => f.write_str("Bogosort"),
             SA::Bubble => f.write_str("Bubble sort"),
+            SA::Pancake => f.write_str("Pancake sort"),
             SA::Gnome => f.write_str("Gnome sort"),
+            SA::Stooge => f.write_str("Stooge sort"),
             SA::Selection => f.write_str("Selection sort"),
             SA::Insertion => f.write_str("Insertion sort"),
             SA::Merge => f.write_str("Merge sort"),
@@ -155,7 +161,9 @@ impl Algorithms {
             (SA::RadixMSD10, Box::new(RadixMSD::new(10))),
             (SA::Bogo, Box::new(Bogo::new())),
             (SA::Gnome, Box::new(Gnome::new())),
+            (SA::Stooge, Box::new(Stooge::new())),
             (SA::Bubble, Box::new(Bubble::new())),
+            (SA::Pancake, Box::new(Pancake::new())),
             (SA::Selection, Box::new(Selection::new())),
             (SA::Insertion, Box::new(Insertion::new())),
             (SA::Merge, Box::new(Merge::new())),
