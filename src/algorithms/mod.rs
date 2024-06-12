@@ -49,8 +49,7 @@ pub trait SortAlgorithm: Debug {
 /// A particular sorting algorithm.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum SortingAlgorithm {
-    // RADIX
-    RadixLSD2 = 0,
+    RadixLSD2,
     RadixLSD4,
     RadixLSD5,
     RadixLSD10,
@@ -74,6 +73,18 @@ pub enum SortingAlgorithm {
     Cocktail,
     QuickSort,
 
+    // TODO:
+    // Bucket,
+    // Timsort,
+    // Strand,
+    // Bitonic,
+    // Sleep,
+    // Tag,
+    // Tree,
+    // Counting,
+    // Bingo,
+    // Pigeonhole,
+    // Cycle,
     Shuffle,
 }
 
@@ -183,8 +194,9 @@ impl Algorithms {
         algorithm: SortingAlgorithm,
         arr: &mut SortArray,
     ) {
-        if let Some(algo) = self.algos.get_mut(&algorithm) {
-            algo.process(arr);
-        }
+        self.algos
+            .get_mut(&algorithm)
+            .expect("Failed to find algorithm in hashmap")
+            .process(arr);
     }
 }
