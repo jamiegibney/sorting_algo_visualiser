@@ -1,4 +1,6 @@
 use super::*;
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use std::cmp::Ordering as Ord;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -24,24 +26,27 @@ mod timsort;
 
 use bogo::Bogo;
 use bubble::Bubble;
+use cocktail::Cocktail;
+use comb::Comb;
 use heap::Heap;
 use insertion::Insertion;
 use merge::Merge;
 use quick::QuickSort;
 use radix::*;
 use selection::Selection;
-use shuffle::Shuffle;
 use shell::Shell;
+use shuffle::Shuffle;
+use timsort::Timsort;
 
 pub trait SortAlgorithm: Debug {
     fn process(&mut self, arr: &mut SortArray);
 }
 
 /// A particular sorting algorithm.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum SortingAlgorithm {
     // RADIX
-    RadixLSD2,
+    RadixLSD2 = 0,
     RadixLSD4,
     RadixLSD5,
     RadixLSD10,
@@ -58,6 +63,8 @@ pub enum SortingAlgorithm {
     Heap,
     #[default]
     Shell,
+    Comb,
+    Cocktail,
     QuickSort,
 
     Shuffle,
@@ -65,46 +72,29 @@ pub enum SortingAlgorithm {
 
 impl SortingAlgorithm {
     pub fn cycle_next(&mut self) {
-        match self {
-            Self::RadixLSD2 => *self = Self::RadixLSD4,
-            Self::RadixLSD4 => *self = Self::RadixLSD5,
-            Self::RadixLSD5 => *self = Self::RadixLSD10,
-            Self::RadixLSD10 => *self = Self::InPlaceRadixLSD4,
-            Self::InPlaceRadixLSD4 => *self = Self::InPlaceRadixLSD10,
-            Self::InPlaceRadixLSD10 => *self = Self::RadixMSD4,
-            Self::RadixMSD4 => *self = Self::RadixMSD10,
-            Self::RadixMSD10 => *self = Self::Bogo,
-            Self::Bogo => *self = Self::Bubble,
-            Self::Bubble => *self = Self::Selection,
-            Self::Selection => *self = Self::Insertion,
-            Self::Insertion => *self = Self::Merge,
-            Self::Merge => *self = Self::Heap,
-            Self::Heap => *self = Self::Shell,
-            Self::Shell => *self = Self::QuickSort,
-            Self::QuickSort => *self = Self::RadixLSD2,
-            Self::Shuffle => *self = Self::Bubble,
+        if matches!(*self, Self::Shuffle) {
+            *self = Self::Bubble;
+        }
+
+        let max = Self::Shuffle as usize;
+        let n = (*self as usize + 1) % max;
+
+        if let Some(next) = FromPrimitive::from_usize(n) {
+            *self = next;
         }
     }
 
     pub fn cycle_prev(&mut self) {
-        match self {
-            Self::RadixLSD2 => *self = Self::QuickSort,
-            Self::RadixLSD4 => *self = Self::RadixLSD2,
-            Self::RadixLSD5 => *self = Self::RadixLSD4,
-            Self::RadixLSD10 => *self = Self::RadixLSD5,
-            Self::InPlaceRadixLSD4 => *self = Self::RadixLSD10,
-            Self::InPlaceRadixLSD10 => *self = Self::InPlaceRadixLSD4,
-            Self::RadixMSD4 => *self = Self::InPlaceRadixLSD10,
-            Self::RadixMSD10 => *self = Self::RadixMSD4,
-            Self::Bogo => *self = Self::RadixMSD10,
-            Self::Bubble => *self = Self::Bogo,
-            Self::Selection => *self = Self::Bubble,
-            Self::Insertion => *self = Self::Selection,
-            Self::Merge => *self = Self::Insertion,
-            Self::Heap => *self = Self::Merge,
-            Self::Shell => *self = Self::Heap,
-            Self::QuickSort => *self = Self::Shell,
-            Self::Shuffle => *self = Self::Bubble,
+        if matches!(*self, Self::Shuffle) {
+            *self = Self::Bubble;
+        }
+
+        let max = Self::Shuffle as usize;
+        let s = *self as usize;
+        let n = if s == 0 { max - 1 } else { s - 1 };
+
+        if let Some(next) = FromPrimitive::from_usize(n) {
+            *self = next;
         }
     }
 }
@@ -132,6 +122,8 @@ impl std::fmt::Display for SortingAlgorithm {
             SA::Merge => f.write_str("Merge sort"),
             SA::Heap => f.write_str("Heap sort"),
             SA::Shell => f.write_str("Shell sort"),
+            SA::Comb => f.write_str("Comb sort"),
+            SA::Cocktail => f.write_str("Cocktail sort"),
             SA::QuickSort => f.write_str("QuickSort"),
             SA::Shuffle => f.write_str("Shuffle"),
         }
@@ -145,8 +137,11 @@ pub struct Algorithms {
 
 impl Algorithms {
     pub fn new() -> Self {
-        let arr: [(SA, Box<dyn SortAlgorithm>); 17] = [
-            (SA::RadixLSD2, Box::new(RadixLSD::new(2))),
+        let arr = [
+            (
+                SA::RadixLSD2,
+                Box::new(RadixLSD::new(2)) as Box<dyn SortAlgorithm>,
+            ),
             (SA::RadixLSD4, Box::new(RadixLSD::new(4))),
             (SA::RadixLSD5, Box::new(RadixLSD::new(5))),
             (SA::RadixLSD10, Box::new(RadixLSD::new(10))),
@@ -161,6 +156,8 @@ impl Algorithms {
             (SA::Merge, Box::new(Merge::new())),
             (SA::Heap, Box::new(Heap)),
             (SA::Shell, Box::new(Shell::new())),
+            (SA::Comb, Box::new(Comb::new())),
+            (SA::Cocktail, Box::new(Cocktail::new())),
             (SA::QuickSort, Box::new(QuickSort::new())),
             (SA::Shuffle, Box::new(Shuffle::new())),
         ];
