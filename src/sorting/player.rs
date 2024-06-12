@@ -1,6 +1,8 @@
 use crate::prelude::*;
 use std::{os::unix::fs::DirBuilderExt, rc::Rc};
 
+const MAX_AUDIO_NOTES_PER_SECOND: usize = 10000;
+
 #[derive(Debug)]
 struct AudioState {
     callback_timer: Arc<Atomic<InstantTime>>,
@@ -240,8 +242,11 @@ impl Updatable for Player {
         self.ops_last_frame =
             cap.set_progress(curr_progress + progress_per_frame);
 
+        let audio_ops_this_frame = (MAX_AUDIO_NOTES_PER_SECOND as f32
+            * update.delta_time) as usize;
+
         // post audio messages
-        for &op in self.ops_last_frame.iter() {
+        for &op in self.ops_last_frame.iter().take(audio_ops_this_frame) {
             self.send_note_event(op, self.buffer_sample_offset());
         }
     }
