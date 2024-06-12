@@ -164,10 +164,10 @@ impl SortCapture {
             Ordering::Less => self.cursor..self.cursor_last,
             Ordering::Equal => {
                 if self.cursor == 0 {
-                    (self.cursor - 1)..self.cursor
+                    0..1
                 }
                 else {
-                    0..1
+                    (self.cursor - 1)..self.cursor
                 }
             }
             Ordering::Greater => self.cursor_last..self.cursor,

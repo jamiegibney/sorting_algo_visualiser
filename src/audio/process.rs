@@ -41,7 +41,7 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
         }
 
         // TODO(jamiegibney): master gain control?
-        let mut gain = [0.03; MAX_BLOCK_SIZE];
+        let mut gain = [0.08; MAX_BLOCK_SIZE];
 
         // process voices and clean any which are finished
         audio

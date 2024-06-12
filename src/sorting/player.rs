@@ -155,13 +155,10 @@ impl Player {
         Rc::clone(&self.ops_last_frame)
     }
 
-    pub fn post_audio(&mut self) {
-        for &op in self.ops_last_frame.iter() {
-            match op {
-                SortOperation::Write { idx, value } => todo!(),
-                SortOperation::Read { idx } => todo!(),
-                SortOperation::Swap { a, b } => todo!(),
-                SortOperation::Compare { a, b, res } => todo!(),
+    pub fn post_audio(&self) {
+        if self.capture.is_some() {
+            for &op in self.ops_last_frame.iter() {
+                self.send_note_event(op, self.buffer_sample_offset());
             }
         }
     }
