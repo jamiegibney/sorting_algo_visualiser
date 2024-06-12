@@ -5,6 +5,7 @@ use nannou::{draw::background::new, prelude::*};
 use std::{
     f32::consts::{FRAC_PI_2, TAU},
     marker::PhantomData as PD,
+    ops::Rem,
     rc::Rc,
 };
 
@@ -18,14 +19,17 @@ pub const CIRCLE_RADIUS: f32 = 300.0;
 //     Rgb { red: 0.0, green: 0.8, blue: 1.0, standard: PD };
 // pub const SWAP_COLOR: Rgb<f32> =
 //     Rgb { red: 0.0, green: 0.0, blue: 0.0, standard: PD };
-pub const COMPARE_COLOR: Rgb<f32> =
+pub const COMPARE_TRUE_COLOR: Rgb<f32> =
     Rgb { red: 1.0, green: 1.0, blue: 1.0, standard: PD };
+pub const COMPARE_FALSE_COLOR: Rgb<f32> =
+    Rgb { red: 0.0, green: 0.0, blue: 0.0, standard: PD };
 
 #[derive(Clone, Copy, Debug)]
 pub enum Overlay {
     Override(Rgb<f32>),
     Invert,
     Darken,
+    Lighten,
 }
 
 /// The color wheel display.
@@ -121,12 +125,15 @@ impl ColorWheel {
     }
 
     fn darken_color(mut color: Rgb<f32>) -> Rgb<f32> {
-        // TODO: use HSL?
-        color.red *= 0.7;
-        color.green *= 0.7;
-        color.blue *= 0.7;
+        let mut hsl = rgb_to_hsl(color);
+        hsl.2 *= 0.5;
+        rgb_from_hsl(hsl)
+    }
 
-        color
+    fn lighten_color(mut color: Rgb<f32>) -> Rgb<f32> {
+        let mut hsl = rgb_to_hsl(color);
+        hsl.2 *= 1.5;
+        rgb_from_hsl(hsl)
     }
 }
 
@@ -137,12 +144,15 @@ impl Updatable for ColorWheel {
         for &op in self.overlay_operations.iter() {
             match op {
                 SortOperation::Compare { a, b, res } => {
-                    if res {
-                        self.overlay_colors[a] =
-                            Some(Overlay::Override(COMPARE_COLOR));
-                        self.overlay_colors[b] =
-                            Some(Overlay::Override(COMPARE_COLOR));
+                    let overlay = if res {
+                        Overlay::Override(COMPARE_TRUE_COLOR)
                     }
+                    else {
+                        Overlay::Lighten
+                    };
+
+                    self.overlay_colors[a] = Some(overlay);
+                    self.overlay_colors[b] = Some(overlay);
                 }
                 SortOperation::Swap { a, b } => {
                     self.overlay_colors[a] = Some(Overlay::Darken);
@@ -153,7 +163,7 @@ impl Updatable for ColorWheel {
                 }
                 SortOperation::Read { idx } => {
                     self.overlay_colors[idx] =
-                        Some(Overlay::Override(COMPARE_COLOR));
+                        Some(Overlay::Override(COMPARE_TRUE_COLOR));
                 }
             }
         }
@@ -177,6 +187,9 @@ impl Drawable for ColorWheel {
                             Overlay::Darken => {
                                 Self::darken_color(self.colors[color_idx])
                             }
+                            Overlay::Lighten => {
+                                Self::lighten_color(self.colors[color_idx])
+                            }
                         },
                     );
 
@@ -196,6 +209,10 @@ impl Drawable for ColorWheel {
             )
             .xy(Vec2::ZERO);
     }
+}
+
+fn rgb_from_hsl(hsl: (f32, f32, f32)) -> Rgb<f32> {
+    hsl_to_rgb(hsl.0, hsl.1, hsl.2)
 }
 
 /// Converts a set of `h` (hue), `s` (saturation), and `l` (luminance)
@@ -223,4 +240,37 @@ fn hsl_to_rgb(mut h: f32, s: f32, l: f32) -> Rgb<f32> {
         h if (300.0..=360.0).contains(&h) => Rgb::new(c, m, x),
         _ => unreachable!(),
     }
+}
+
+/// Converts a set of `r` (red), `g` (green), and `b` (blue) values
+/// values to an HSL value.
+///
+/// [Source](https://www.rapidtables.com/convert/color/rgb-to-hsl.html)
+fn rgb_to_hsl(color: Rgb<f32>) -> (f32, f32, f32) {
+    let Rgb { red, green, blue, .. } = color;
+
+    let c_max = red.max(blue.max(green));
+    let c_min = red.min(blue.min(green));
+    let delta = c_max - c_min;
+
+    let l = (c_max + c_min) * 0.5;
+
+    let s =
+        if delta == 0.0 { 0.0 } else { delta / (1.0 - (2.0 * l - 1.0).abs()) };
+
+    let h = 60.0
+        * if red > blue && red > green {
+            ((green - blue) / delta).rem(6.0)
+        }
+        else if green > red && green > blue {
+            (blue - red) / delta + 2.0
+        }
+        else if blue > red && blue > green {
+            (red - green) / delta + 4.0
+        }
+        else {
+            0.0
+        };
+
+    (h, s, l)
 }
