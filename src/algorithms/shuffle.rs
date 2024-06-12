@@ -5,7 +5,7 @@ use super::*;
 pub struct Shuffle;
 
 impl Shuffle {
-    const ITERS_PER_STEP: usize = 20;
+    const ITERS_PER_STEP: usize = 30;
 
     pub const fn new() -> Self {
         Self

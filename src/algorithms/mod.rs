@@ -7,14 +7,27 @@ use SortingAlgorithm as SA;
 
 mod bogo;
 mod bubble;
+mod bucket;
+mod cocktail;
+mod comb;
+mod heap;
 mod insertion;
+mod merge;
+mod pancake;
+mod quick;
 mod radix;
 mod selection;
+mod shell;
 mod shuffle;
+mod stooge;
+mod timsort;
 
 use bogo::Bogo;
 use bubble::Bubble;
+use heap::Heap;
 use insertion::Insertion;
+use merge::Merge;
+use quick::QuickSort;
 use radix::*;
 use selection::Selection;
 use shuffle::Shuffle;
@@ -37,10 +50,13 @@ pub enum SortingAlgorithm {
     RadixMSD10,
 
     Bogo,
-    #[default]
     Bubble,
     Selection,
     Insertion,
+    Merge,
+    Heap,
+    #[default]
+    QuickSort,
 
     Shuffle,
 }
@@ -59,14 +75,17 @@ impl SortingAlgorithm {
             Self::Bogo => *self = Self::Bubble,
             Self::Bubble => *self = Self::Selection,
             Self::Selection => *self = Self::Insertion,
-            Self::Insertion => *self = Self::RadixLSD2,
+            Self::Insertion => *self = Self::Merge,
+            Self::Merge => *self = Self::Heap,
+            Self::Heap => *self = Self::QuickSort,
+            Self::QuickSort => *self = Self::RadixLSD2,
             Self::Shuffle => *self = Self::Bubble,
         }
     }
 
     pub fn cycle_prev(&mut self) {
         match self {
-            Self::RadixLSD2 => *self = Self::Insertion,
+            Self::RadixLSD2 => *self = Self::QuickSort,
             Self::RadixLSD4 => *self = Self::RadixLSD2,
             Self::RadixLSD5 => *self = Self::RadixLSD4,
             Self::RadixLSD10 => *self = Self::RadixLSD5,
@@ -78,6 +97,9 @@ impl SortingAlgorithm {
             Self::Bubble => *self = Self::Bogo,
             Self::Selection => *self = Self::Bubble,
             Self::Insertion => *self = Self::Selection,
+            Self::Merge => *self = Self::Insertion,
+            Self::Heap => *self = Self::Merge,
+            Self::QuickSort => *self = Self::Heap,
             Self::Shuffle => *self = Self::Bubble,
         }
     }
@@ -103,6 +125,9 @@ impl std::fmt::Display for SortingAlgorithm {
             SA::Bubble => f.write_str("Bubble sort"),
             SA::Selection => f.write_str("Selection sort"),
             SA::Insertion => f.write_str("Insertion sort"),
+            SA::Merge => f.write_str("Merge sort"),
+            SA::Heap => f.write_str("Heap sort"),
+            SA::QuickSort => f.write_str("QuickSort"),
             SA::Shuffle => f.write_str("Shuffle"),
         }
     }
@@ -115,19 +140,22 @@ pub struct Algorithms {
 
 impl Algorithms {
     pub fn new() -> Self {
-        let arr: [(SA, Box<dyn SortAlgorithm>); 13] = [
-            (SA::RadixLSD2, Box::new(RadixBase::lsd_with_base(2))),
-            (SA::RadixLSD4, Box::new(RadixLSD4::new())),
-            (SA::RadixLSD5, Box::new(RadixBase::lsd_with_base(5))),
-            (SA::RadixLSD10, Box::new(RadixLSD10::new())),
-            (SA::InPlaceRadixLSD4, Box::new(InPlaceRadixLSD4::new())),
-            (SA::InPlaceRadixLSD10, Box::new(InPlaceRadixLSD10::new())),
-            (SA::RadixMSD4, Box::new(RadixMSD4::new())),
-            (SA::RadixMSD10, Box::new(RadixMSD10::new())),
+        let arr: [(SA, Box<dyn SortAlgorithm>); 16] = [
+            (SA::RadixLSD2, Box::new(RadixLSD::new(2))),
+            (SA::RadixLSD4, Box::new(RadixLSD::new(4))),
+            (SA::RadixLSD5, Box::new(RadixLSD::new(5))),
+            (SA::RadixLSD10, Box::new(RadixLSD::new(10))),
+            (SA::InPlaceRadixLSD4, Box::new(RadixLSDInPlace::new(4))),
+            (SA::InPlaceRadixLSD10, Box::new(RadixLSDInPlace::new(10))),
+            (SA::RadixMSD4, Box::new(RadixMSD::new(4))),
+            (SA::RadixMSD10, Box::new(RadixMSD::new(10))),
             (SA::Bogo, Box::new(Bogo::new())),
             (SA::Bubble, Box::new(Bubble::new())),
             (SA::Selection, Box::new(Selection::new())),
             (SA::Insertion, Box::new(Insertion::new())),
+            (SA::Merge, Box::new(Merge::new())),
+            (SA::Heap, Box::new(Heap)),
+            (SA::QuickSort, Box::new(QuickSort::new())),
             (SA::Shuffle, Box::new(Shuffle::new())),
         ];
 
