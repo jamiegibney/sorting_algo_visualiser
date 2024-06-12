@@ -127,6 +127,14 @@ impl Player {
         self.capture.as_ref().map_or(false, |c| c.is_sorted())
     }
 
+    pub fn sort_data(&self) -> Option<SortData> {
+        self.capture.as_ref().map(|c| c.data)
+    }
+
+    pub fn algorithm(&self) -> Option<SortingAlgorithm> {
+        self.capture.as_ref().map(|c| c.algorithm())
+    }
+
     /// Copies the internal array state to the provided array.
     ///
     /// # Panics
@@ -147,6 +155,17 @@ impl Player {
         Rc::clone(&self.ops_last_frame)
     }
 
+    pub fn post_audio(&mut self) {
+        for &op in self.ops_last_frame.iter() {
+            match op {
+                SortOperation::Write { idx, value } => todo!(),
+                SortOperation::Read { idx } => todo!(),
+                SortOperation::Swap { a, b } => todo!(),
+                SortOperation::Compare { a, b, res } => todo!(),
+            }
+        }
+    }
+
     fn send_note_event(&self, op: SortOperation, timing: u32) {
         assert!(
             self.capture.is_some(),
@@ -158,7 +177,6 @@ impl Player {
         let (mut freq, mut amp) = (0.5, 1.0);
 
         match op {
-            SortOperation::Noop => {}
             SortOperation::Write { idx, .. } => {
                 freq = idx as f32 / len_f * 0.5;
                 amp = 0.6;
@@ -220,6 +238,7 @@ impl Updatable for Player {
 
         if cap.is_done() {
             println!("finished playing sort");
+            self.ops_last_frame = [].into();
             self.is_playing = false;
             return;
         }

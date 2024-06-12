@@ -5,7 +5,6 @@ use crate::prelude::*;
 /// Each kind of sorting operation.
 #[derive(Clone, Copy, Debug)]
 pub enum SortOperation {
-    Noop,
     Write { idx: usize, value: usize },
     Read { idx: usize },
     Swap { a: usize, b: usize },

@@ -6,7 +6,7 @@ use nannou::text::*;
 #[derive(Clone, Copy, Debug)]
 pub struct UiData {
     pub algorithm: SortingAlgorithm,
-    // pub results: SortResults,
+    pub data: Option<SortData>,
     pub resolution: usize,
     pub speed: f32,
     pub num_voices: u32,
@@ -24,28 +24,25 @@ impl Ui {
     }
 
     pub fn update_text(&mut self, data: UiData) {
-        let UiData {
-            algorithm,
-            // results,
-            resolution,
-            speed,
-            num_voices,
-            sorted,
-        } = data;
+        let UiData { algorithm, data, resolution, speed, num_voices, sorted } =
+            data;
 
-        // let SortResults { writes, reads, swaps, comparisons } = results;
+        let info = data.map_or_else(|| String::from("No data — no algorithm has been captured"), |data| {
+            let SortData { writes, reads, swaps, comparisons } = data;
+            format!(
+                "Writes: {writes}, reads: {reads}, swaps: {swaps}, comparisons: {comparisons}"
+            )
+        });
         let algo = format!("Algorithm: {algorithm}",);
         let res = format!("{resolution} segments");
         let sorted = format!("Sorted: {}", if sorted { "yes" } else { "no" });
-        // let info = format!("Writes: {writes}, reads: {reads}, swaps: {swaps},
-        // comparisons: {comparisons}");
         let speed = format!("Speed: {speed:.2}x");
         let voices = format!(
             "Active audio voices: {num_voices}/{}",
             super::audio::NUM_VOICES
         );
 
-        self.text = format!("{algo}\n{res}\n{speed}\n{sorted}\n{voices}");
+        self.text = format!("{algo}\n{res}\n{speed}\n{info}\n{sorted}\n{voices}");
     }
 
     pub fn draw(&self, draw: &Draw) {

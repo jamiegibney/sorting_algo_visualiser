@@ -1,6 +1,53 @@
 use crate::prelude::*;
 use std::rc::Rc;
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SortData {
+    pub reads: usize,
+    pub comparisons: usize,
+    pub writes: usize,
+    pub swaps: usize,
+}
+
+impl SortData {
+    pub fn update(&mut self, op: SortOperation, rewind: bool) {
+        match op {
+            SortOperation::Write { idx, value } => {
+                if rewind {
+                    self.writes -= 1;
+                }
+                else {
+                    self.writes += 1;
+                }
+            }
+            SortOperation::Read { idx } => {
+                if rewind {
+                    self.reads -= 1;
+                }
+                else {
+                    self.reads += 1;
+                }
+            }
+            SortOperation::Swap { a, b } => {
+                if rewind {
+                    self.swaps -= 1;
+                }
+                else {
+                    self.swaps += 1;
+                }
+            }
+            SortOperation::Compare { a, b, res } => {
+                if rewind {
+                    self.comparisons -= 1;
+                }
+                else {
+                    self.comparisons += 1;
+                }
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SortCapture {
     ///  The initial state of the array.
@@ -20,6 +67,8 @@ pub struct SortCapture {
     cursor: usize,
     /// The previous position in the operation buffer.
     cursor_last: usize,
+
+    pub data: SortData,
 }
 
 impl SortCapture {
@@ -45,6 +94,8 @@ impl SortCapture {
 
             cursor: 0,
             cursor_last: 0,
+
+            data: SortData::default(),
         }
     }
 
@@ -111,7 +162,14 @@ impl SortCapture {
 
         self.operations[match self.cursor.cmp(&self.cursor_last) {
             Ordering::Less => self.cursor..self.cursor_last,
-            Ordering::Equal => (self.cursor - 1)..self.cursor,
+            Ordering::Equal => {
+                if self.cursor == 0 {
+                    (self.cursor - 1)..self.cursor
+                }
+                else {
+                    0..1
+                }
+            }
             Ordering::Greater => self.cursor_last..self.cursor,
         }]
         .into()
@@ -122,6 +180,7 @@ impl SortCapture {
         self.write_stack.clear();
         self.cursor = 0;
         self.cursor_last = 0;
+        self.data = SortData::default();
     }
 
     fn set_arr(&mut self) {
@@ -132,28 +191,31 @@ impl SortCapture {
         let rewind = self.cursor < self.cursor_last;
 
         let mut update_arr = |i: usize| {
-            match self.operations.get(i).copied() {
-                Some(SortOperation::Write { idx, value }) => {
-                    if rewind {
-                        // if we're rewinding (i.e. undoing), then we need to
-                        // pop the last value from the write stack.
-                        self.scratch[idx] = self.write_stack.pop().unwrap();
-                    }
-                    else {
-                        // otherwise, we push the current value in the scratch
-                        // buffer before overwriting it.
-                        self.write_stack.push(self.scratch[idx]);
-                        self.scratch[idx] = value;
-                    }
-                }
-                Some(SortOperation::Swap { a, b }) => {
-                    // swap operations are always reversible.
-                    self.scratch.swap(a, b);
-                }
+            if let Some(op) = self.operations.get(i).copied() {
+                self.data.update(op, rewind);
 
-                None => panic!(),
-
-                _ => {}
+                match op {
+                    SortOperation::Write { idx, value } => {
+                        if rewind {
+                            // if we're rewinding (i.e. undoing), then we need
+                            // to pop the last value
+                            // from the write stack.
+                            self.scratch[idx] = self.write_stack.pop().unwrap();
+                        }
+                        else {
+                            // otherwise, we push the current value in the
+                            // scratch buffer before
+                            // overwriting it.
+                            self.write_stack.push(self.scratch[idx]);
+                            self.scratch[idx] = value;
+                        }
+                    }
+                    SortOperation::Swap { a, b } => {
+                        // swap operations are always reversible.
+                        self.scratch.swap(a, b);
+                    }
+                    _ => {}
+                }
             }
         };
 

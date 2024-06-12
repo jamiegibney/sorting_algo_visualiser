@@ -19,7 +19,6 @@ pub struct Model {
     audio_stream: Stream<Audio>,
     resolution: usize,
 
-    // results: SortResults,
     audio_voice_counter: Arc<AtomicU32>,
     sorted: bool,
 
@@ -60,7 +59,6 @@ impl Model {
             target_arr: (0..DEFAULT_RESOLUTION).collect(),
             resolution: DEFAULT_RESOLUTION,
 
-            // results: SortResults::default(),
             sorted: true,
             audio_voice_counter,
 
@@ -115,11 +113,15 @@ impl Model {
             self.update_data.last_frame.elapsed().as_secs_f32();
 
         self.player.update(app, self.update_data);
+
+        self.color_wheel
+            .set_overlay_ops(self.player.ops_last_frame());
         self.color_wheel.update(app, self.update_data);
         self.player.copy_arr_to(self.color_wheel.arr_mut());
 
         self.ui.update_text(UiData {
             algorithm: self.process.current_algorithm,
+            data: self.player.sort_data(),
             resolution: self.resolution,
             speed: self.player.speed(),
             num_voices: self.audio_voice_counter.load(Relaxed),

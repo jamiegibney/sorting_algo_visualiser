@@ -5,6 +5,7 @@ use nannou::{draw::background::new, prelude::*};
 use std::{
     f32::consts::{FRAC_PI_2, TAU},
     marker::PhantomData as PD,
+    rc::Rc,
 };
 
 pub const DEFAULT_RESOLUTION: usize = 256;
@@ -40,6 +41,7 @@ pub struct ColorWheel {
     colors: Vec<Rgb<f32>>,
     /// The indices for each slice's color — copied from the sorting array.
     color_indices: Vec<usize>,
+    overlay_operations: Rc<[SortOperation]>,
 }
 
 impl ColorWheel {
@@ -51,6 +53,7 @@ impl ColorWheel {
             overlay_colors: vec![None; DEFAULT_RESOLUTION],
             colors: vec![Rgb::new(0.0, 0.0, 0.0); DEFAULT_RESOLUTION],
             color_indices: (0..DEFAULT_RESOLUTION).collect(),
+            overlay_operations: [].into(),
         };
 
         s.set_mesh_vertices();
@@ -71,34 +74,12 @@ impl ColorWheel {
         self.set_color_array();
     }
 
-    /// Sets any overlay colors from a set of operations.
-    // pub fn overlay_from(&mut self, operations: Vec<SortOperation>) {
-    //     for op in operations {
-    //         match op {
-    //             SortOperation::Compare { a, b, res } => {
-    //                 if res {
-    //                     self.overlay_colors[a] =
-    //                         Some(Overlay::Override(COMPARE_COLOR));
-    //                     self.overlay_colors[b] =
-    //                         Some(Overlay::Override(COMPARE_COLOR));
-    //                 }
-    //             }
-    //             SortOperation::Swap { a, b } => {
-    //                 self.overlay_colors[a] = Some(Overlay::Darken);
-    //                 self.overlay_colors[b] = Some(Overlay::Darken);
-    //             }
-    //             SortOperation::Write { idx, value } => {
-    //                 self.overlay_colors[idx] = Some(Overlay::Darken);
-    //             }
-    //             SortOperation::Read { idx } => {
-    //                 self.overlay_colors[idx] =
-    //                     Some(Overlay::Override(COMPARE_COLOR));
-    //             }
-    //             SortOperation::Noop => (),
-    //         }
-    //     }
-    // }
+    /// Provides a slice of operations which will be used to draw an overlay.
+    pub fn set_overlay_ops(&mut self, operations: Rc<[SortOperation]>) {
+        self.overlay_operations = operations;
+    }
 
+    /// Returns a mutable reference to the color index array.
     pub fn arr_mut(&mut self) -> &mut [usize] {
         &mut self.color_indices
     }
@@ -152,6 +133,30 @@ impl ColorWheel {
 impl Updatable for ColorWheel {
     fn update(&mut self, app: &App, update: UpdateData) {
         self.overlay_colors.fill(None);
+
+        for &op in self.overlay_operations.iter() {
+            match op {
+                SortOperation::Compare { a, b, res } => {
+                    if res {
+                        self.overlay_colors[a] =
+                            Some(Overlay::Override(COMPARE_COLOR));
+                        self.overlay_colors[b] =
+                            Some(Overlay::Override(COMPARE_COLOR));
+                    }
+                }
+                SortOperation::Swap { a, b } => {
+                    self.overlay_colors[a] = Some(Overlay::Darken);
+                    self.overlay_colors[b] = Some(Overlay::Darken);
+                }
+                SortOperation::Write { idx, value } => {
+                    self.overlay_colors[idx] = Some(Overlay::Darken);
+                }
+                SortOperation::Read { idx } => {
+                    self.overlay_colors[idx] =
+                        Some(Overlay::Override(COMPARE_COLOR));
+                }
+            }
+        }
     }
 }
 
