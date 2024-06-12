@@ -6,7 +6,6 @@ use std::{
     f32::consts::{FRAC_PI_2, TAU},
     marker::PhantomData as PD,
     ops::Rem,
-    rc::Rc,
 };
 
 pub const DEFAULT_RESOLUTION: usize = 256;
@@ -17,8 +16,8 @@ pub const CIRCLE_RADIUS: f32 = 300.0;
 //     Rgb { red: 1.0, green: 1.0, blue: 1.0, standard: PD };
 // pub const READ_COLOR: Rgb<f32> =
 //     Rgb { red: 0.0, green: 0.8, blue: 1.0, standard: PD };
-// pub const SWAP_COLOR: Rgb<f32> =
-//     Rgb { red: 0.0, green: 0.0, blue: 0.0, standard: PD };
+pub const SWAP_COLOR: Rgb<f32> =
+    Rgb { red: 0.0, green: 1.0, blue: 0.0, standard: PD };
 pub const COMPARE_TRUE_COLOR: Rgb<f32> =
     Rgb { red: 1.0, green: 1.0, blue: 1.0, standard: PD };
 pub const COMPARE_FALSE_COLOR: Rgb<f32> =
@@ -28,8 +27,8 @@ pub const COMPARE_FALSE_COLOR: Rgb<f32> =
 pub enum Overlay {
     Override(Rgb<f32>),
     Invert,
-    Darken,
-    Lighten,
+    Darken(f32),
+    Lighten(f32),
 }
 
 /// The color wheel display.
@@ -45,7 +44,7 @@ pub struct ColorWheel {
     colors: Vec<Rgb<f32>>,
     /// The indices for each slice's color — copied from the sorting array.
     color_indices: Vec<usize>,
-    overlay_operations: Rc<[SortOperation]>,
+    overlay_operations: Arc<[SortOperation]>,
 }
 
 impl ColorWheel {
@@ -79,7 +78,7 @@ impl ColorWheel {
     }
 
     /// Provides a slice of operations which will be used to draw an overlay.
-    pub fn set_overlay_ops(&mut self, operations: Rc<[SortOperation]>) {
+    pub fn set_overlay_ops(&mut self, operations: Arc<[SortOperation]>) {
         self.overlay_operations = operations;
     }
 
@@ -116,23 +115,21 @@ impl ColorWheel {
         self.colors.len()
     }
 
-    fn invert_color(mut color: Rgb<f32>) -> Rgb<f32> {
-        color.red = 1.0 - color.red;
-        color.green = 1.0 - color.green;
-        color.blue = 1.0 - color.blue;
-
-        color
-    }
-
-    fn darken_color(mut color: Rgb<f32>) -> Rgb<f32> {
+    fn invert_color(color: Rgb<f32>) -> Rgb<f32> {
         let mut hsl = rgb_to_hsl(color);
-        hsl.2 *= 0.5;
+        hsl.0 = (hsl.0 + 180.0).rem(360.0);
         rgb_from_hsl(hsl)
     }
 
-    fn lighten_color(mut color: Rgb<f32>) -> Rgb<f32> {
+    fn darken_color(color: Rgb<f32>, darken_amount: f32) -> Rgb<f32> {
         let mut hsl = rgb_to_hsl(color);
-        hsl.2 *= 1.5;
+        hsl.2 *= 1.0 - darken_amount.clamp(0.0, 1.0);
+        rgb_from_hsl(hsl)
+    }
+
+    fn lighten_color(color: Rgb<f32>, lighten_amount: f32) -> Rgb<f32> {
+        let mut hsl = rgb_to_hsl(color);
+        hsl.2 *= 1.0 + lighten_amount.clamp(0.0, 1.0);
         rgb_from_hsl(hsl)
     }
 }
@@ -145,25 +142,25 @@ impl Updatable for ColorWheel {
             match op {
                 SortOperation::Compare { a, b, res } => {
                     let overlay = if res {
-                        Overlay::Override(COMPARE_TRUE_COLOR)
+                        Overlay::Lighten(0.5)
                     }
                     else {
-                        Overlay::Lighten
+                        Overlay::Darken(0.2)
                     };
 
                     self.overlay_colors[a] = Some(overlay);
                     self.overlay_colors[b] = Some(overlay);
                 }
                 SortOperation::Swap { a, b } => {
-                    self.overlay_colors[a] = Some(Overlay::Darken);
-                    self.overlay_colors[b] = Some(Overlay::Darken);
+                    let overlay = Overlay::Invert;
+                    self.overlay_colors[a] = Some(overlay);
+                    self.overlay_colors[b] = Some(overlay);
                 }
                 SortOperation::Write { idx, value } => {
-                    self.overlay_colors[idx] = Some(Overlay::Darken);
+                    self.overlay_colors[idx] = Some(Overlay::Darken(0.7));
                 }
                 SortOperation::Read { idx } => {
-                    self.overlay_colors[idx] =
-                        Some(Overlay::Override(COMPARE_TRUE_COLOR));
+                    self.overlay_colors[idx] = Some(Overlay::Lighten(0.3));
                 }
             }
         }
@@ -184,11 +181,11 @@ impl Drawable for ColorWheel {
                             Overlay::Invert => {
                                 Self::invert_color(self.colors[color_idx])
                             }
-                            Overlay::Darken => {
-                                Self::darken_color(self.colors[color_idx])
+                            Overlay::Darken(amt) => {
+                                Self::darken_color(self.colors[color_idx], amt)
                             }
-                            Overlay::Lighten => {
-                                Self::lighten_color(self.colors[color_idx])
+                            Overlay::Lighten(amt) => {
+                                Self::lighten_color(self.colors[color_idx], amt)
                             }
                         },
                     );

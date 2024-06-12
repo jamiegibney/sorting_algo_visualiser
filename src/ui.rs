@@ -8,9 +8,11 @@ pub struct UiData {
     pub algorithm: SortingAlgorithm,
     pub data: Option<SortData>,
     pub resolution: usize,
+    pub player_time: f32,
     pub speed: f32,
     pub num_voices: u32,
     pub sorted: bool,
+    pub computing: bool,
 }
 
 #[derive(Debug)]
@@ -23,26 +25,43 @@ impl Ui {
         Self { text: String::new() }
     }
 
-    pub fn update_text(&mut self, data: UiData) {
-        let UiData { algorithm, data, resolution, speed, num_voices, sorted } =
-            data;
+    pub fn update_text(&mut self, ui_data: UiData) {
+        let UiData {
+            algorithm,
+            data,
+            resolution,
+            player_time,
+            speed,
+            num_voices,
+            sorted,
+            computing,
+        } = ui_data;
 
-        let info = data.map_or_else(|| String::from("No data — no algorithm has been captured"), |data| {
+        let info = if computing {
+            String::from("Computing...")
+        }
+        else {
+            data.map_or_else(|| String::from("No data — no algorithm has been captured"), |data| {
             let SortData { writes, reads, swaps, comparisons } = data;
             format!(
                 "Writes: {writes}, reads: {reads}, swaps: {swaps}, comparisons: {comparisons}"
             )
-        });
+        })
+        };
         let algo = format!("Algorithm: {algorithm}",);
         let res = format!("{resolution} segments");
         let sorted = format!("Sorted: {}", if sorted { "yes" } else { "no" });
-        let speed = format!("Speed: {speed:.2}x");
+        let speed = format!(
+            "Speed: {speed:.2}x ({:.2}s playback time)",
+            player_time * speed
+        );
         let voices = format!(
             "Active audio voices: {num_voices}/{}",
             super::audio::NUM_VOICES
         );
 
-        self.text = format!("{algo}\n{res}\n{speed}\n{info}\n{sorted}\n{voices}");
+        self.text =
+            format!("{algo}\n{res}\n{speed}\n{info}\n{sorted}\n{voices}");
     }
 
     pub fn draw(&self, draw: &Draw) {

@@ -12,6 +12,7 @@ mod bubble;
 mod bucket;
 mod cocktail;
 mod comb;
+mod cycle;
 mod gnome;
 mod heap;
 mod insertion;
@@ -27,8 +28,10 @@ mod timsort;
 
 use bogo::Bogo;
 use bubble::Bubble;
+use bucket::Bucket;
 use cocktail::Cocktail;
 use comb::Comb;
+use cycle::Cycle;
 use gnome::Gnome;
 use heap::Heap;
 use insertion::Insertion;
@@ -43,7 +46,7 @@ use stooge::Stooge;
 use timsort::Timsort;
 
 /// Trait for sorting algorithms.
-pub trait SortAlgorithm: Debug {
+pub trait SortAlgorithm: Debug + Send + Sync {
     /// The sorting process. This should mutate the provided array to "sort"
     /// it — however that is defined for the algorithm.
     fn process(&mut self, arr: &mut SortArray);
@@ -63,17 +66,19 @@ pub enum SortingAlgorithm {
 
     Bogo,
     Gnome,
+    #[default]
     Stooge,
     Bubble,
     Pancake,
     Selection,
     Insertion,
-    Merge,
-    Heap,
-    #[default]
     Shell,
     Comb,
     Cocktail,
+    Cycle,
+
+    Merge,
+    Heap,
     QuickSort,
 
     // TODO:
@@ -87,9 +92,10 @@ pub enum SortingAlgorithm {
     // Counting,
     // Bingo,
     // Pigeonhole,
-    // Cycle,
     Shuffle,
 }
+
+unsafe impl bytemuck::NoUninit for SortingAlgorithm {}
 
 impl SortingAlgorithm {
     pub fn cycle_next(&mut self) {
@@ -145,6 +151,7 @@ impl std::fmt::Display for SortingAlgorithm {
             Insertion => write("Insertion sort"),
             Merge => write("Merge sort"),
             Heap => write("Heap sort"),
+            Cycle => write("Cycle sort"),
             Shell => write("Shell sort"),
             Comb => write("Comb sort"),
             Cocktail => write("Cocktail sort"),
@@ -187,6 +194,7 @@ impl Algorithms {
             (SA::Shell, Box::new(Shell::new())),
             (SA::Comb, Box::new(Comb::new())),
             (SA::Cocktail, Box::new(Cocktail::new())),
+            (SA::Cycle, Box::new(Cycle::new())),
             (SA::QuickSort, Box::new(QuickSort::new())),
             (SA::Shuffle, Box::new(Shuffle::new())),
         ];

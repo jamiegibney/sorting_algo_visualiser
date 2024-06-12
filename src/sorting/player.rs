@@ -20,7 +20,7 @@ pub struct Player {
 
     audio: AudioState,
 
-    ops_last_frame: Rc<[SortOperation]>,
+    ops_last_frame: Arc<[SortOperation]>,
 }
 
 impl Player {
@@ -153,8 +153,8 @@ impl Player {
         arr.copy_from_slice(cap.arr());
     }
 
-    pub fn ops_last_frame(&self) -> Rc<[SortOperation]> {
-        Rc::clone(&self.ops_last_frame)
+    pub fn ops_last_frame(&self) -> Arc<[SortOperation]> {
+        Arc::clone(&self.ops_last_frame)
     }
 
     fn send_note_event(&self, op: SortOperation, timing: u32) {
@@ -195,7 +195,7 @@ impl Player {
 
     fn map_freq(average_idx: f32) -> f32 {
         const MIN_NOTE: f32 = 48.0;
-        const MAX_NOTE: f32 = 100.0;
+        const MAX_NOTE: f32 = 112.0;
 
         let x = average_idx.clamp(0.0, 1.0).powf(1.5);
         let note = (MAX_NOTE - MIN_NOTE).mul_add(x, MIN_NOTE).round();

@@ -1,26 +1,36 @@
 #![allow(clippy::suboptimal_flops)]
 
+use std::{thread, time::Duration};
+
 use super::*;
-use crate::prelude::*;
+use crate::{prelude::*, thread_pool::ThreadPool};
 use nannou::prelude::*;
 use nannou_audio::Stream;
 
 pub struct Model {
     window_id: WindowId,
 
-    process: Process,
+    current_algorithm: Arc<Atomic<SortingAlgorithm>>,
+    previous_algorithm: Arc<Mutex<Option<SortingAlgorithm>>>,
+
+    process: Arc<Mutex<Process>>,
     color_wheel: ColorWheel,
     ui: Ui,
-    sort_arr: SortArray,
-    player: Player,
+    sort_arr: Arc<Mutex<SortArray>>,
+    player: Arc<Mutex<Player>>,
 
     target_arr: Vec<usize>,
+
+    thread_pool: ThreadPool,
 
     audio_stream: Stream<Audio>,
     resolution: usize,
 
-    audio_voice_counter: Arc<AtomicU32>,
     sorted: bool,
+    audio_voice_counter: Arc<AtomicU32>,
+    computing: Arc<AtomicBool>,
+
+    auto_play_ch: (Arc<Sender<()>>, Receiver<()>),
 
     update_data: UpdateData,
 }
@@ -45,22 +55,35 @@ impl Model {
         let audio_model = Audio::new(note_rx, Arc::clone(&audio_voice_counter));
         let audio_callback_timer = Arc::clone(audio_model.callback_timer());
 
+        let (ap_tx, ap_rx) = bounded(1);
+
+        let algo = Arc::new(Atomic::new(SortingAlgorithm::default()));
+
         Self {
             window_id,
 
-            process: Process::new(),
+            process: Arc::new(Mutex::new(Process::new(Arc::clone(&algo)))),
+            current_algorithm: algo,
+            previous_algorithm: Arc::new(Mutex::new(None)),
+
             color_wheel,
             ui: Ui::new(),
-            sort_arr: SortArray::new(DEFAULT_RESOLUTION),
-            player: Player::new(
+            sort_arr: Arc::new(Mutex::new(SortArray::new(DEFAULT_RESOLUTION))),
+            player: Arc::new(Mutex::new(Player::new(
                 DEFAULT_RESOLUTION, note_tx, audio_callback_timer,
-            ),
+            ))),
 
             target_arr: (0..DEFAULT_RESOLUTION).collect(),
             resolution: DEFAULT_RESOLUTION,
 
+            thread_pool: ThreadPool::build(1)
+                .expect("failed to allocate sorting thread"),
+
             sorted: true,
             audio_voice_counter,
+            computing: Arc::new(AtomicBool::new(false)),
+
+            auto_play_ch: (Arc::new(ap_tx), ap_rx),
 
             update_data: UpdateData {
                 last_frame: Instant::now(),
@@ -73,10 +96,10 @@ impl Model {
 
     pub fn set_resolution(&mut self, new_resolution: usize) {
         self.target_arr = (0..new_resolution).collect();
-        self.sort_arr.resize(new_resolution);
+        self.sort_arr.lock().resize(new_resolution);
         self.color_wheel.resize(new_resolution);
         self.resolution = new_resolution;
-        self.player.clear_capture();
+        self.player.lock().clear_capture();
 
         self.sorted = true;
     }
@@ -97,12 +120,16 @@ impl Model {
         self.set_resolution((self.resolution / 2).max(3));
     }
 
-    pub fn next_algorithm(&mut self) {
-        self.process.current_algorithm.cycle_next();
+    pub fn next_algorithm(&self) {
+        let mut curr = self.current_algorithm.load(Relaxed);
+        curr.cycle_next();
+        self.current_algorithm.store(curr, Relaxed);
     }
 
-    pub fn previous_algorithm(&mut self) {
-        self.process.current_algorithm.cycle_prev();
+    pub fn previous_algorithm(&self) {
+        let mut curr = self.current_algorithm.load(Relaxed);
+        curr.cycle_prev();
+        self.current_algorithm.store(curr, Relaxed);
     }
 
     // *** *** *** //
@@ -112,21 +139,30 @@ impl Model {
         self.update_data.delta_time =
             self.update_data.last_frame.elapsed().as_secs_f32();
 
-        self.player.update(app, self.update_data);
+        let mut player = self.player.lock();
 
-        self.color_wheel
-            .set_overlay_ops(self.player.ops_last_frame());
+        if self.auto_play_ch.1.try_recv().is_ok() {
+            player.play();
+        }
+
+        player.update(app, self.update_data);
+
+        self.color_wheel.set_overlay_ops(player.ops_last_frame());
         self.color_wheel.update(app, self.update_data);
-        self.player.copy_arr_to(self.color_wheel.arr_mut());
+        player.copy_arr_to(self.color_wheel.arr_mut());
 
         self.ui.update_text(UiData {
-            algorithm: self.process.current_algorithm,
-            data: self.player.sort_data(),
+            algorithm: self.current_algorithm.load(Relaxed),
+            data: player.sort_data(),
             resolution: self.resolution,
-            speed: self.player.speed(),
+            player_time: player.playback_time(),
+            speed: player.speed(),
             num_voices: self.audio_voice_counter.load(Relaxed),
-            sorted: self.player.is_sorted(),
+            sorted: player.is_sorted(),
+            computing: self.computing.load(Relaxed),
         });
+
+        drop(player);
 
         self.update_data.last_frame = Instant::now();
     }
@@ -140,74 +176,105 @@ impl Model {
     // *** *** *** //
 
     /// Forces the color wheel to be sorted via `std::sort_unstable`.
-    pub fn force_sort(&mut self) {
-        self.player.clear_capture();
-        self.sort_arr
-            .prepare_for_sort(self.process.current_algorithm);
-        self.sort_arr.force_sort();
-        self.player.set_capture(self.sort_arr.create_capture());
+    pub fn force_sort(&self) {
+        let mut player = self.player.lock();
+        let mut sort_arr = self.sort_arr.lock();
+
+        player.clear_capture();
+        sort_arr.prepare_for_sort(self.current_algorithm.load(Relaxed));
+        sort_arr.force_sort();
+        player.set_capture(sort_arr.create_capture());
     }
 
     /// Returns `true` if the sorting array is correctly sorted.
     pub fn is_sorted(&self) -> bool {
-        self.player.is_sorted()
+        self.player.lock().is_sorted()
     }
 
-    pub fn compute(&mut self) {
+    /// Computes the sort.
+    pub fn compute(&self) {
+        self.computing.store(true, Relaxed);
+
         // prepare the array
         self.sort_arr
-            .prepare_for_sort(self.process.current_algorithm);
+            .lock()
+            .prepare_for_sort(self.current_algorithm.load(Relaxed));
+        println!(
+            "preparing with algo {}",
+            self.current_algorithm.load(Relaxed)
+        );
 
-        // perform the sort
-        self.process.sort(&mut self.sort_arr);
+        let player = Arc::clone(&self.player);
+        let arr = Arc::clone(&self.sort_arr);
+        let process = Arc::clone(&self.process);
+        let computing = Arc::clone(&self.computing);
+        let ap_tx = Arc::clone(&self.auto_play_ch.0);
+        let curr_algo = Arc::clone(&self.current_algorithm);
+        let prev = Arc::clone(&self.previous_algorithm);
 
-        // dump the captured data to the player
-        self.player.set_capture(self.sort_arr.create_capture());
+        self.thread_pool.execute(move || {
+            let mut arr = arr.lock();
+            process.lock().sort(&mut arr);
+            player.lock().set_capture(arr.create_capture());
 
-        self.player.play();
+            drop(arr);
+
+            if let Some(prev) = prev.lock().take() {
+                curr_algo.store(prev, Relaxed);
+            }
+
+            computing.store(false, Relaxed);
+            _ = ap_tx.send(());
+        });
     }
 
     /// Starts a shuffle.
     pub fn shuffle(&mut self) {
-        let algo = self.process.current_algorithm;
+        *self.previous_algorithm.lock() = Some(
+            self.current_algorithm
+                .swap(SortingAlgorithm::Shuffle, Relaxed),
+        );
 
-        self.process.set_algorithm(SortingAlgorithm::Shuffle);
         self.compute();
-        self.process.set_algorithm(algo);
     }
 
-    pub fn increase_speed(&mut self) {
-        let speed = self.player.speed();
-        self.player.set_speed((speed + 0.02).min(5.0));
+    pub fn increase_speed(&self) {
+        let mut player = self.player.lock();
+
+        let speed = player.speed();
+        player.set_speed((speed + 0.02).min(5.0));
     }
 
-    pub fn decrease_speed(&mut self) {
-        let speed = self.player.speed();
-        self.player.set_speed((speed - 0.02).max(-5.0));
+    pub fn decrease_speed(&self) {
+        let mut player = self.player.lock();
+
+        let speed = player.speed();
+        player.set_speed((speed - 0.02).max(-5.0));
     }
 
-    pub fn play(&mut self) {
-        if self.player.at_end() {
-            self.player.stop();
+    pub fn play(&self) {
+        let mut player = self.player.lock();
+        if player.at_end() {
+            player.stop();
         }
 
-        self.player.play();
+        player.play();
     }
 
-    pub fn pause(&mut self) {
-        self.player.pause();
+    pub fn pause(&self) {
+        self.player.lock().pause();
     }
 
-    pub fn stop(&mut self) {
-        self.player.stop();
+    pub fn stop(&self) {
+        self.player.lock().stop();
     }
 
-    pub const fn is_playing(&self) -> bool {
-        self.player.is_playing()
+    pub fn is_playing(&self) -> bool {
+        self.player.lock().is_playing()
     }
 
     pub fn current_algorithm(&self) -> String {
-        self.process.current_algorithm.to_string()
+        self.current_algorithm.load(Relaxed).to_string()
     }
 
     pub fn stop_audio(&self) {

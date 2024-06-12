@@ -1,5 +1,3 @@
-use std::os::unix::fs::DirBuilderExt;
-
 use crate::prelude::*;
 
 /// Each kind of sorting operation.
@@ -24,6 +22,10 @@ pub struct SortArray {
     /// The buffer of operations — where the sorting operations are recorded
     /// to.
     op_buffer: Vec<SortOperation>,
+
+    /// A counter which is passed to a capture to prevent unnecessary
+    /// computation later.
+    num_writes: usize,
 }
 
 impl SortArray {
@@ -33,6 +35,7 @@ impl SortArray {
             arr: (0..len).collect(),
             initial_arr: (0..len).collect(),
             op_buffer: vec![],
+            num_writes: 0,
         }
     }
 
@@ -41,6 +44,7 @@ impl SortArray {
     pub fn write(&mut self, idx: usize, value: usize) {
         self.push(SortOperation::Write { idx, value });
         self.arr[idx] = value;
+        self.num_writes += 1;
     }
 
     /// Returns the value as position `idx`. Will panic if
@@ -89,6 +93,7 @@ impl SortArray {
         self.curr_algorithm = algorithm;
         self.initial_arr.copy_from_slice(&self.arr);
         self.op_buffer.clear();
+        self.num_writes = 0;
     }
 
     /// Prepares the array for sorting, using the provided slice as the initial
@@ -115,24 +120,31 @@ impl SortArray {
     /// its internal state after creating a capture. If you don't need this
     /// behavior, use [`Self::dump_capture`] instead.
     pub fn create_capture(&self) -> SortCapture {
+        println!(
+            "arr len {} | op buf len {}",
+            self.initial_arr.len(),
+            self.op_buffer.len()
+        );
+
         SortCapture::create(
             self.initial_arr.clone(),
-            self.op_buffer.clone(),
+            self.op_buffer.as_slice().into(),
             self.curr_algorithm,
+            self.num_writes,
         )
     }
 
-    /// Returns a [`SortCapture`] from the current array state, consuming
-    /// the internal data.
-    pub fn dump_capture(&mut self) -> SortCapture {
-        use std::mem::swap;
-
-        let mut op = vec![];
-
-        swap(&mut self.op_buffer, &mut op);
-
-        SortCapture::create(self.initial_arr.clone(), op, self.curr_algorithm)
-    }
+    // /// Returns a [`SortCapture`] from the current array state, consuming
+    // /// the internal data.
+    // pub fn dump_capture(&mut self) -> SortCapture {
+    //     use std::mem::swap;
+    //
+    //     let mut op = vec![];
+    //
+    //     swap(&mut self.op_buffer, &mut op);
+    //
+    //     SortCapture::create(self.initial_arr.clone(), op,
+    // self.curr_algorithm) }
 
     /// Resizes the sorting array.
     pub fn resize(&mut self, new_size: usize) {

@@ -10,7 +10,7 @@ use std::time::Instant;
 #[derive(Debug)]
 pub struct Process {
     algorithms: Algorithms,
-    pub current_algorithm: SortingAlgorithm,
+    current_algorithm: Arc<Atomic<SortingAlgorithm>>,
 
     last: Instant,
 
@@ -18,10 +18,10 @@ pub struct Process {
 }
 
 impl Process {
-    pub fn new() -> Self {
+    pub fn new(current_algorithm: Arc<Atomic<SortingAlgorithm>>) -> Self {
         Self {
             algorithms: Algorithms::new(),
-            current_algorithm: SortingAlgorithm::default(),
+            current_algorithm,
 
             last: Instant::now(),
 
@@ -29,17 +29,10 @@ impl Process {
         }
     }
 
-    pub fn with_algorithm(mut self, algorithm: SortingAlgorithm) -> Self {
-        self.set_algorithm(algorithm);
-        self
-    }
-
-    pub fn set_algorithm(&mut self, algorithm: SortingAlgorithm) {
-        self.current_algorithm = algorithm;
-    }
-
     /// Processes the currently-selected algorithm if it can.
     pub fn sort(&mut self, arr: &mut SortArray) {
-        self.algorithms.process(self.current_algorithm, arr);
+        println!("sorting with algo {}", self.current_algorithm.load(Relaxed));
+        self.algorithms
+            .process(self.current_algorithm.load(Relaxed), arr);
     }
 }

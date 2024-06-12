@@ -1,10 +1,9 @@
 #![allow(unused, clippy::wildcard_imports)]
 
-use std::sync::{Arc, Mutex};
-
 use nannou::prelude::*;
 
 mod algorithms;
+mod thread_pool;
 mod audio;
 mod color_wheel;
 mod message;

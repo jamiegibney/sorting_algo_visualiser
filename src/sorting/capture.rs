@@ -51,9 +51,9 @@ impl SortData {
 #[derive(Clone, Debug)]
 pub struct SortCapture {
     ///  The initial state of the array.
-    initial_array: Vec<usize>,
+    // initial_array: Vec<usize>,
     /// The list of operations.
-    operations: Vec<SortOperation>,
+    operations: Arc<[SortOperation]>,
     /// A stack of written values, used to undo any previous write operations.
     write_stack: Vec<usize>,
 
@@ -75,16 +75,12 @@ impl SortCapture {
     /// Creates a new `SortCapture`.
     pub fn create(
         init_arr: Vec<usize>,
-        operations: Vec<SortOperation>,
+        operations: Arc<[SortOperation]>,
         algorithm: SortingAlgorithm,
+        num_writes: usize,
     ) -> Self {
-        let num_writes = operations
-            .iter()
-            .filter(|&&op| matches!(op, SortOperation::Write { .. }))
-            .count();
-
         Self {
-            initial_array: init_arr.clone(),
+            // initial_array: init_arr.clone(),
             operations,
             write_stack: Vec::with_capacity(num_writes),
 
@@ -148,7 +144,7 @@ impl SortCapture {
     /// the buffer — i.e., if the progress is rewound, then the operations in
     /// the slice are still ordered going forward.
     #[must_use]
-    pub fn set_progress(&mut self, progress: f32) -> Rc<[SortOperation]> {
+    pub fn set_progress(&mut self, progress: f32) -> Arc<[SortOperation]> {
         if self.operations.is_empty() {
             return [].into();
         }
@@ -160,6 +156,7 @@ impl SortCapture {
         self.cursor = (progress.clamp(0.0, 1.0) * n) as usize;
         self.set_arr();
 
+        // FIXME: please fix this
         self.operations[match self.cursor.cmp(&self.cursor_last) {
             Ordering::Less => self.cursor..self.cursor_last,
             Ordering::Equal => {
@@ -176,7 +173,8 @@ impl SortCapture {
     }
 
     pub fn reset_progress(&mut self) {
-        self.scratch.copy_from_slice(&self.initial_array);
+        // self.scratch.copy_from_slice(&self.initial_array);
+        self.set_progress(0.0);
         self.write_stack.clear();
         self.cursor = 0;
         self.cursor_last = 0;

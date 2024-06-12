@@ -10,11 +10,9 @@ pub use atomic::Atomic;
 pub use crossbeam_channel::{bounded, Receiver, Sender};
 pub use nannou::prelude::*;
 pub use nannou_audio::Buffer;
+pub use parking_lot::Mutex;
 pub use sorting::*;
 pub use std::f32::consts::{FRAC_PI_2, TAU};
-pub use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
+pub use std::sync::atomic::{AtomicU32, AtomicBool, Ordering::Relaxed};
 pub use std::time::Instant;
-pub use std::{
-    cmp::Ordering,
-    sync::{Arc, Mutex},
-};
+pub use std::{cmp::Ordering, sync::Arc};
