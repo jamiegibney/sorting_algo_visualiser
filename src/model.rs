@@ -113,7 +113,6 @@ impl Model {
             self.update_data.last_frame.elapsed().as_secs_f32();
 
         self.player.update(app, self.update_data);
-        self.player.post_audio();
 
         self.color_wheel
             .set_overlay_ops(self.player.ops_last_frame());

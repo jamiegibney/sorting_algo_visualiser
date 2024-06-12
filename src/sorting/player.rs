@@ -155,14 +155,6 @@ impl Player {
         Rc::clone(&self.ops_last_frame)
     }
 
-    pub fn post_audio(&self) {
-        if self.capture.is_some() {
-            for &op in self.ops_last_frame.iter() {
-                self.send_note_event(op, self.buffer_sample_offset());
-            }
-        }
-    }
-
     fn send_note_event(&self, op: SortOperation, timing: u32) {
         assert!(
             self.capture.is_some(),
@@ -247,5 +239,10 @@ impl Updatable for Player {
 
         self.ops_last_frame =
             cap.set_progress(curr_progress + progress_per_frame);
+
+        // post audio messages
+        for &op in self.ops_last_frame.iter() {
+            self.send_note_event(op, self.buffer_sample_offset());
+        }
     }
 }

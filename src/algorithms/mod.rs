@@ -31,6 +31,7 @@ use quick::QuickSort;
 use radix::*;
 use selection::Selection;
 use shuffle::Shuffle;
+use shell::Shell;
 
 pub trait SortAlgorithm: Debug {
     fn process(&mut self, arr: &mut SortArray);
@@ -56,6 +57,7 @@ pub enum SortingAlgorithm {
     Merge,
     Heap,
     #[default]
+    Shell,
     QuickSort,
 
     Shuffle,
@@ -77,7 +79,8 @@ impl SortingAlgorithm {
             Self::Selection => *self = Self::Insertion,
             Self::Insertion => *self = Self::Merge,
             Self::Merge => *self = Self::Heap,
-            Self::Heap => *self = Self::QuickSort,
+            Self::Heap => *self = Self::Shell,
+            Self::Shell => *self = Self::QuickSort,
             Self::QuickSort => *self = Self::RadixLSD2,
             Self::Shuffle => *self = Self::Bubble,
         }
@@ -99,7 +102,8 @@ impl SortingAlgorithm {
             Self::Insertion => *self = Self::Selection,
             Self::Merge => *self = Self::Insertion,
             Self::Heap => *self = Self::Merge,
-            Self::QuickSort => *self = Self::Heap,
+            Self::Shell => *self = Self::Heap,
+            Self::QuickSort => *self = Self::Shell,
             Self::Shuffle => *self = Self::Bubble,
         }
     }
@@ -127,6 +131,7 @@ impl std::fmt::Display for SortingAlgorithm {
             SA::Insertion => f.write_str("Insertion sort"),
             SA::Merge => f.write_str("Merge sort"),
             SA::Heap => f.write_str("Heap sort"),
+            SA::Shell => f.write_str("Shell sort"),
             SA::QuickSort => f.write_str("QuickSort"),
             SA::Shuffle => f.write_str("Shuffle"),
         }
@@ -140,7 +145,7 @@ pub struct Algorithms {
 
 impl Algorithms {
     pub fn new() -> Self {
-        let arr: [(SA, Box<dyn SortAlgorithm>); 16] = [
+        let arr: [(SA, Box<dyn SortAlgorithm>); 17] = [
             (SA::RadixLSD2, Box::new(RadixLSD::new(2))),
             (SA::RadixLSD4, Box::new(RadixLSD::new(4))),
             (SA::RadixLSD5, Box::new(RadixLSD::new(5))),
@@ -155,6 +160,7 @@ impl Algorithms {
             (SA::Insertion, Box::new(Insertion::new())),
             (SA::Merge, Box::new(Merge::new())),
             (SA::Heap, Box::new(Heap)),
+            (SA::Shell, Box::new(Shell::new())),
             (SA::QuickSort, Box::new(QuickSort::new())),
             (SA::Shuffle, Box::new(Shuffle::new())),
         ];
