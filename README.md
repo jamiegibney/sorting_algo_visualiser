@@ -8,18 +8,14 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 
 ## TODO
 
-- [ ] Handle the case where the sorting thread panics — ideally a message should be sent and the thread respawned.
-
 - [ ] Instead of computing each algorithm in discrete steps, "record" their operations on the main array, and then play that back at whatever rate is appropriate.
 - [ ] Add new sorting algorithms
-    - [ ] Merge sort
-    - [ ] Quick sort
-    - [ ] Heap sort
+    - [ ] Bingo sort
     - [ ] Radix sorts
     - [ ] Bucket sort
-    - [ ] Shell sort
     - [ ] TimSort
-    - [ ] Gnome sort
-    - [ ] ...
-- [ ] Send audio messages from `SortArray`, synchronised with the audio thread
-- [ ] UI controls for sorting/scrambling/changing algorithm
+- [ ] UI controls
+    - [ ] Playback controls
+    - [ ] Menu for sorting algorithms
+    - [ ] Buttons for sorting/shuffling/resetting...
+    - [ ] Different font, because why not
