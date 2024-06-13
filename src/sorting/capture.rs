@@ -46,6 +46,13 @@ impl SortData {
             }
         }
     }
+
+    pub fn reset(&mut self) {
+        self.reads = 0;
+        self.comparisons = 0;
+        self.writes = 0;
+        self.swaps = 0;
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -159,12 +166,12 @@ impl SortCapture {
             self.operations.len()
         }
         else {
-            (progress.clamp(0.0, 1.0) * n) as usize
+            (progress.clamp(0.0, 1.0) * n).ceil().min(n) as usize
         };
 
         self.set_arr();
 
-        // FIXME: please fix this
+        // FIXME: please fix this nonsense
         self.operations[match self.cursor.cmp(&self.cursor_last) {
             Ordering::Less => self.cursor..self.cursor_last,
             Ordering::Equal => {
@@ -181,12 +188,11 @@ impl SortCapture {
     }
 
     pub fn reset_progress(&mut self) {
-        // self.scratch.copy_from_slice(&self.initial_array);
         self.set_progress(0.0);
         self.write_stack.clear();
         self.cursor = 0;
         self.cursor_last = 0;
-        self.data = SortData::default();
+        self.data.reset();
     }
 
     fn set_arr(&mut self) {
