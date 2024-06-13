@@ -1,5 +1,6 @@
 use std::{
     io::{Error, Result as IoResult},
+    panic,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
         mpsc, Arc, Mutex,
@@ -44,6 +45,20 @@ pub enum PoolCreationError {
 }
 
 #[derive(Debug)]
+struct PoisonPill;
+
+impl Drop for PoisonPill {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            println!(
+                "thread {} is panicking!",
+                thread::current().name().unwrap()
+            );
+        }
+    }
+}
+
+#[derive(Debug)]
 struct Worker {
     _id: usize,
     thread: Option<JoinHandle<()>>,
@@ -61,28 +76,43 @@ impl Worker {
         let is_idle = Arc::new(AtomicBool::new(true));
         let is_idle_ref = Arc::clone(&is_idle);
 
-        let thread = builder.spawn(move || loop {
-            // set the idle state to true
-            is_idle_ref.store(true, Relaxed);
+        let thread =
+            builder
+                .name(format!("sorting thread #{id}"))
+                .spawn(move || loop {
+                    let pill = PoisonPill;
 
-            // then block and wait for a message (i.e. a task)
-            let msg = receiver.lock().unwrap().recv();
+                    // set the idle state to true
+                    is_idle_ref.store(true, Relaxed);
 
-            // when a task is received, decrement the queue counter
-            queue.fetch_sub(1, Relaxed);
-            // and set the worker thread as not idle
-            is_idle_ref.store(false, Relaxed);
+                    // then block and wait for a message (i.e. a task)
+                    let msg = receiver.lock().unwrap().recv();
 
-            // if the message is an error, the sender was dropped and the
-            // loop can finish (allow the thread to join)
-            if msg.is_err() {
-                break;
-            }
+                    // when a task is received, decrement the queue counter
+                    queue.fetch_sub(1, Relaxed);
+                    // and set the worker thread as not idle
+                    is_idle_ref.store(false, Relaxed);
 
-            // otherwise, unwrap the task and process it
-            let mut job = msg.unwrap();
-            job();
-        })?;
+                    match msg {
+                        Ok(mut job) => {
+                            let result = panic::catch_unwind(
+                                panic::AssertUnwindSafe(|| {
+                                    job();
+                                }),
+                            );
+
+                            if let Err(e) = result {
+                                eprintln!(
+                                    "thread {:?} panicked!",
+                                    thread::current()
+                                        .name()
+                                        .unwrap_or("unnamed"),
+                                );
+                            }
+                        }
+                        Err(_) => break,
+                    }
+                })?;
 
         Ok(Self { _id: id, thread: Some(thread), is_idle })
     }
@@ -145,11 +175,11 @@ impl ThreadPool {
     /// method if you need to ensure that all worker threads finish the jobs
     /// you have provided before continuing.
     pub fn block_until_free(&self) {
-        loop {
-            if self.is_idle() {
-                break;
-            }
-        }
+        while !self.is_idle() {}
+        // while !self.is_idle() {
+        //     thread::park();
+        // }
+        // thread::current().unpark();
     }
 
     /// Returns whether all of the `ThreadPool`'s worker threads are idle or
@@ -167,7 +197,7 @@ impl ThreadPool {
             .count()
     }
 
-    /// Returns the current number of queued_jobs.
+    /// Returns the current number of queued jobs.
     pub fn queued_jobs(&self) -> usize {
         self.queue.load(Relaxed)
     }
