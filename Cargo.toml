@@ -17,3 +17,7 @@ parking_lot = "0.12.3"
 
 [profile.dev]
 debug = "line-tables-only"
+opt-level = 0
+
+[profile.release]
+panic = "unwind"
