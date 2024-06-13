@@ -183,7 +183,7 @@ impl Model {
         player.clear_capture();
         sort_arr.prepare_for_sort(self.current_algorithm.load(Relaxed));
         sort_arr.force_sort();
-        player.set_capture(sort_arr.create_capture());
+        player.set_capture(sort_arr.dump_capture());
     }
 
     /// Returns `true` if the sorting array is correctly sorted.
@@ -211,7 +211,7 @@ impl Model {
         self.thread_pool.execute(move || {
             let mut arr = arr.lock();
             process.lock().sort(&mut arr);
-            player.lock().set_capture(arr.create_capture());
+            player.lock().set_capture(arr.dump_capture());
 
             drop(arr);
 

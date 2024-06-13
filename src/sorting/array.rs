@@ -91,7 +91,7 @@ impl SortArray {
     /// array.
     pub fn prepare_for_sort(&mut self, algorithm: SortingAlgorithm) {
         self.curr_algorithm = algorithm;
-        self.initial_arr.copy_from_slice(&self.arr);
+        self.initial_arr = self.arr.clone();
         self.op_buffer.clear();
         self.num_writes = 0;
     }
@@ -113,32 +113,18 @@ impl SortArray {
         self.prepare_for_sort(algorithm);
     }
 
-    /// Generates a [`SortCapture`] from the current array state by *cloning*
-    /// the internal data.
-    ///
-    /// In other words, this method ensures that the `SortArray` maintains
-    /// its internal state after creating a capture. If you don't need this
-    /// behavior, use [`Self::dump_capture`] instead.
-    pub fn create_capture(&self) -> SortCapture {
+    /// Generates a [`SortCapture`] from the current array state, consuming the
+    /// internal data.
+    pub fn dump_capture(&mut self) -> SortCapture {
+        use std::mem::take;
+
         SortCapture::create(
-            self.initial_arr.clone(),
-            self.op_buffer.as_slice().into(),
+            take(&mut self.initial_arr),
+            Arc::new(take(&mut self.op_buffer).into_boxed_slice()),
             self.curr_algorithm,
             self.num_writes,
         )
     }
-
-    // /// Returns a [`SortCapture`] from the current array state, consuming
-    // /// the internal data.
-    // pub fn dump_capture(&mut self) -> SortCapture {
-    //     use std::mem::swap;
-    //
-    //     let mut op = vec![];
-    //
-    //     swap(&mut self.op_buffer, &mut op);
-    //
-    //     SortCapture::create(self.initial_arr.clone(), op,
-    // self.curr_algorithm) }
 
     /// Resizes the sorting array.
     pub fn resize(&mut self, new_size: usize) {
@@ -148,7 +134,7 @@ impl SortArray {
 
     /// Force-sorts the array.
     pub fn force_sort(&mut self) {
-        self.arr.sort_unstable();
+        self.arr.iter_mut().enumerate().for_each(|(i, x)| *x = i);
         self.initial_arr.copy_from_slice(&self.arr);
     }
 

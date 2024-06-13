@@ -53,7 +53,7 @@ pub struct SortCapture {
     ///  The initial state of the array.
     // initial_array: Vec<usize>,
     /// The list of operations.
-    operations: Arc<[SortOperation]>,
+    operations: Arc<Box<[SortOperation]>>,
     /// A stack of written values, used to undo any previous write operations.
     write_stack: Vec<usize>,
 
@@ -75,7 +75,7 @@ impl SortCapture {
     /// Creates a new `SortCapture`.
     pub fn create(
         init_arr: Vec<usize>,
-        operations: Arc<[SortOperation]>,
+        operations: Arc<Box<[SortOperation]>>,
         algorithm: SortingAlgorithm,
         num_writes: usize,
     ) -> Self {
