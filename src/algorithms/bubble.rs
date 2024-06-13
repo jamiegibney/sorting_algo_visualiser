@@ -18,7 +18,7 @@ impl SortProcessor for Bubble {
             any_swapped = false;
 
             for j in 0..(n - i - 1) {
-                if arr.cmp(j, j + 1, Ordering::Greater) {
+                if arr.cmp(j, j + 1, Greater) {
                     arr.swap(j, j + 1);
                     any_swapped = true;
                 }

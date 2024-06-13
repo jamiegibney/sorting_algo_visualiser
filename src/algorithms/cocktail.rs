@@ -21,7 +21,7 @@ impl SortProcessor for Cocktail {
             swapped = false;
 
             for i in start..end {
-                if arr.cmp(i, i + 1, Ordering::Greater) {
+                if arr.cmp(i, i + 1, Greater) {
                     arr.swap(i, i + 1);
                     swapped = true;
                 }
@@ -35,7 +35,7 @@ impl SortProcessor for Cocktail {
             end -= 1;
 
             for i in (start..end).rev() {
-                if arr.cmp(i, i + 1, Ordering::Greater) {
+                if arr.cmp(i, i + 1, Greater) {
                     arr.swap(i, i + 1);
                     swapped = true;
                 }

@@ -22,7 +22,7 @@ impl Pancake {
         let mut max_idx = 0;
 
         for i in 0..len {
-            if arr.cmp(i, max_idx, Ordering::Greater) {
+            if arr.cmp(i, max_idx, Greater) {
                 max_idx = i;
             }
         }

@@ -12,7 +12,7 @@ impl Bogo {
 
     fn is_sorted(arr: &mut SortArray) -> bool {
         for i in 0..(arr.len() - 1) {
-            if arr.cmp(i, i + 1, Ordering::Greater) {
+            if arr.cmp(i, i + 1, Greater) {
                 return false;
             }
         }

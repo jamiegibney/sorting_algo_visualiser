@@ -10,10 +10,10 @@ impl Heap {
         let l = 2 * i + 1;
         let r = 2 * i + 2;
 
-        if l < n && arr.cmp(l, max, Ordering::Greater) {
+        if l < n && arr.cmp(l, max, Greater) {
             max = l;
         }
-        if r < n && arr.cmp(r, max, Ordering::Greater) {
+        if r < n && arr.cmp(r, max, Greater) {
             max = r;
         }
 

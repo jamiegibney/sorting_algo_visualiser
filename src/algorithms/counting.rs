@@ -15,7 +15,7 @@ impl Counting {
         let mut max = 0;
 
         for i in 0..arr.len() {
-            if arr.cmp(i, max, Ordering::Greater) {
+            if arr.cmp(i, max, Greater) {
                 max = i;
             }
         }

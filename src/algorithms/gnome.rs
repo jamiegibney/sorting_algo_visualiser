@@ -19,7 +19,7 @@ impl SortProcessor for Gnome {
                 i = 1;
             }
 
-            if arr.cmp(i, i - 1, Ordering::Less) {
+            if arr.cmp(i, i - 1, Less) {
                 arr.swap(i, i - 1);
                 i -= 1;
             }

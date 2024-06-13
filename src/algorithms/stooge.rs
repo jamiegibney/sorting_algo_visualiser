@@ -13,7 +13,7 @@ impl Stooge {
             return;
         }
 
-        if arr.cmp(l, h, Ordering::Greater) {
+        if arr.cmp(l, h, Greater) {
             arr.swap(l, h);
         }
 

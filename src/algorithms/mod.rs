@@ -1,7 +1,7 @@
 use super::*;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use std::cmp::Ordering as Ord;
+use std::cmp::Ordering::{Equal, Greater, Less};
 use std::collections::HashMap;
 use std::fmt::Debug;
 
@@ -30,9 +30,9 @@ mod sleep;
 mod stooge;
 mod timsort;
 
+use bingo::Bingo;
 use bogo::Bogo;
 use bubble::Bubble;
-use bingo::Bingo;
 use bucket::Bucket;
 use cocktail::Cocktail;
 use comb::Comb;
@@ -63,6 +63,37 @@ pub trait SortProcessor: Debug + Send + Sync {
 /// A particular sorting algorithm.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum SortingAlgorithm {
+    Bogo,
+    Stooge,
+
+    Gnome,
+    Bubble,
+    Selection,
+    Insertion,
+    Pancake,
+    Shell,
+    Comb,
+    Cocktail,
+    // TODO
+    Bingo,
+    Cycle,
+    // TODO
+    Bucket,
+    Counting,
+    #[default]
+    Pigeonhole,
+
+    Merge,
+    Heap,
+    // TODO
+    Timsort,
+    QuickSort,
+
+    // TODO: none of the radix sorts are currently implemented.
+    // refer to this LSD sort:
+    // https://github.com/w0rthy/ArrayVisualizer/blob/master/src/array/visualizer/sort/RadixLSD.java
+    // and this bubble sort to understand the API:
+    // https://github.com/w0rthy/ArrayVisualizer/blob/master/src/array/visualizer/sort/BubbleSort.java
     RadixLSD2,
     RadixLSD4,
     RadixLSD5,
@@ -72,38 +103,16 @@ pub enum SortingAlgorithm {
     RadixMSD4,
     RadixMSD10,
 
-    Bogo,
-    Gnome,
-    Stooge,
-    Bubble,
-    Pancake,
-    Selection,
-    Insertion,
-    Shell,
-    Comb,
-    Cocktail,
-    Cycle,
-    // TODO
-    Bingo,
-    // TODO
-    Bucket,
-    Counting,
-    #[default]
-    Pigeonhole,
-
     Sleep,
-
-    // TODO
-    Timsort,
-    Merge,
-    Heap,
-    QuickSort,
 
     // TODO: Bitonic sort requires arrays with a power of two length.
     // Bitonic,
     // TODO: Strand sort is certainly feasible, but might be quite boring as
     // it uses an input & output buffer.
     // Strand,
+
+    // NOTE: Shuffle MUST be the last variant in order for the cycling methods
+    // to function.
     Shuffle,
 }
 
@@ -189,10 +198,26 @@ impl Algorithms {
     /// Creates and initializes all sorting algorithms.
     pub fn new() -> Self {
         let arr = [
-            (
-                SA::RadixLSD2,
-                Box::new(RadixLSD::new(2)) as Box<dyn SortProcessor>,
-            ),
+            (SA::Bogo, Box::new(Bogo::new()) as Box<dyn SortProcessor>),
+            (SA::Stooge, Box::new(Stooge::new())),
+            (SA::Gnome, Box::new(Gnome::new())),
+            (SA::Bubble, Box::new(Bubble::new())),
+            (SA::Selection, Box::new(Selection::new())),
+            (SA::Insertion, Box::new(Insertion::new())),
+            (SA::Pancake, Box::new(Pancake::new())),
+            (SA::Shell, Box::new(Shell::new())),
+            (SA::Comb, Box::new(Comb::new())),
+            (SA::Cocktail, Box::new(Cocktail::new())),
+            (SA::Bingo, Box::new(Bingo::new())),
+            (SA::Cycle, Box::new(Cycle::new())),
+            (SA::Bucket, Box::new(Bucket::new())),
+            (SA::Counting, Box::new(Counting::new())),
+            (SA::Pigeonhole, Box::new(Pigeonhole::new())),
+            (SA::Merge, Box::new(Merge::new())),
+            (SA::Heap, Box::new(Heap)),
+            (SA::Timsort, Box::new(Timsort::new())),
+            (SA::QuickSort, Box::new(QuickSort::new())),
+            (SA::RadixLSD2, Box::new(RadixLSD::new(2))),
             (SA::RadixLSD4, Box::new(RadixLSD::new(4))),
             (SA::RadixLSD5, Box::new(RadixLSD::new(5))),
             (SA::RadixLSD10, Box::new(RadixLSD::new(10))),
@@ -200,22 +225,6 @@ impl Algorithms {
             (SA::InPlaceRadixLSD10, Box::new(RadixLSDInPlace::new(10))),
             (SA::RadixMSD4, Box::new(RadixMSD::new(4))),
             (SA::RadixMSD10, Box::new(RadixMSD::new(10))),
-            (SA::Bogo, Box::new(Bogo::new())),
-            (SA::Gnome, Box::new(Gnome::new())),
-            (SA::Stooge, Box::new(Stooge::new())),
-            (SA::Bubble, Box::new(Bubble::new())),
-            (SA::Pancake, Box::new(Pancake::new())),
-            (SA::Selection, Box::new(Selection::new())),
-            (SA::Insertion, Box::new(Insertion::new())),
-            (SA::Merge, Box::new(Merge::new())),
-            (SA::Heap, Box::new(Heap)),
-            (SA::Shell, Box::new(Shell::new())),
-            (SA::Comb, Box::new(Comb::new())),
-            (SA::Cocktail, Box::new(Cocktail::new())),
-            (SA::Cycle, Box::new(Cycle::new())),
-            (SA::Counting, Box::new(Counting::new())),
-            (SA::Pigeonhole, Box::new(Pigeonhole::new())),
-            (SA::QuickSort, Box::new(QuickSort::new())),
             (SA::Sleep, Box::new(Sleep::new())),
             (SA::Shuffle, Box::new(Shuffle::new())),
         ];

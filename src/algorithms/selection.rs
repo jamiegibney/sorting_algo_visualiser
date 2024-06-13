@@ -31,7 +31,7 @@ impl SortProcessor for Selection {
             min_idx = i;
 
             for j in (i + 1)..n {
-                if arr.cmp(j, min_idx, Ordering::Less) {
+                if arr.cmp(j, min_idx, Less) {
                     min_idx = j;
                 }
             }

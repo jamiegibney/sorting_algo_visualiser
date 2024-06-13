@@ -19,7 +19,7 @@ impl SortProcessor for Cycle {
             let mut pos = start;
 
             for i in (start + 1)..n {
-                if arr.cmp(i, start, Ordering::Less) {
+                if arr.cmp(i, start, Less) {
                     pos += 1;
                 }
             }
@@ -28,7 +28,7 @@ impl SortProcessor for Cycle {
                 continue;
             }
 
-            while arr.cmp(start, pos, Ordering::Equal) {
+            while arr.cmp(start, pos, Equal) {
                 pos += 1;
             }
 
@@ -40,7 +40,7 @@ impl SortProcessor for Cycle {
                 pos = start;
 
                 for i in (start + 1)..n {
-                    if arr.cmp(i, start, Ordering::Less) {
+                    if arr.cmp(i, start, Less) {
                         pos += 1;
                     }
                 }
@@ -49,11 +49,11 @@ impl SortProcessor for Cycle {
                     break;
                 }
 
-                while arr.cmp(start, pos, Ordering::Equal) {
+                while arr.cmp(start, pos, Equal) {
                     pos += 1;
                 }
 
-                if !arr.cmp(start, pos, Ordering::Equal) {
+                if !arr.cmp(start, pos, Equal) {
                     arr.swap(start, pos);
                 }
             }

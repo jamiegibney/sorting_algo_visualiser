@@ -24,7 +24,7 @@ impl SortProcessor for Comb {
             swapped = false;
 
             for i in 0..(n - gap) {
-                if arr.cmp(i, i + gap, Ordering::Greater) {
+                if arr.cmp(i, i + gap, Greater) {
                     arr.swap(i, i + gap);
                     swapped = true;
                 }

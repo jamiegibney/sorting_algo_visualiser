@@ -18,10 +18,10 @@ impl SortProcessor for Pigeonhole {
         let n = arr.len();
 
         for i in 0..n {
-            if arr.cmp(i, min_idx, Ordering::Less) {
+            if arr.cmp(i, min_idx, Less) {
                 min_idx = i;
             }
-            if arr.cmp(i, max_idx, Ordering::Greater) {
+            if arr.cmp(i, max_idx, Greater) {
                 max_idx = i;
             }
         }
