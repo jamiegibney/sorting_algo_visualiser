@@ -7,47 +7,49 @@ use std::fmt::Debug;
 
 use SortingAlgorithm as SA;
 
+mod bingo;
 mod bogo;
 mod bubble;
 mod bucket;
-mod sleep;
-mod counting;
 mod cocktail;
 mod comb;
+mod counting;
 mod cycle;
 mod gnome;
 mod heap;
 mod insertion;
 mod merge;
 mod pancake;
+mod pigeonhole;
 mod quick;
 mod radix;
-mod pigeonhole;
 mod selection;
 mod shell;
 mod shuffle;
+mod sleep;
 mod stooge;
 mod timsort;
 
 use bogo::Bogo;
-use pigeonhole::Pigeonhole;
 use bubble::Bubble;
+use bingo::Bingo;
 use bucket::Bucket;
 use cocktail::Cocktail;
 use comb::Comb;
+use counting::Counting;
 use cycle::Cycle;
 use gnome::Gnome;
-use sleep::Sleep;
 use heap::Heap;
-use counting::Counting;
 use insertion::Insertion;
 use merge::Merge;
 use pancake::Pancake;
+use pigeonhole::Pigeonhole;
 use quick::QuickSort;
 use radix::*;
 use selection::Selection;
 use shell::Shell;
 use shuffle::Shuffle;
+use sleep::Sleep;
 use stooge::Stooge;
 use timsort::Timsort;
 
@@ -81,23 +83,27 @@ pub enum SortingAlgorithm {
     Comb,
     Cocktail,
     Cycle,
+    // TODO
+    Bingo,
+    // TODO
+    Bucket,
     Counting,
     #[default]
     Pigeonhole,
 
     Sleep,
-    
+
+    // TODO
+    Timsort,
     Merge,
     Heap,
     QuickSort,
 
-    // TODO:
-    // Bucket,
-    // Timsort,
-    // Strand,
+    // TODO: Bitonic sort requires arrays with a power of two length.
     // Bitonic,
-    // Tree,
-    // Bingo,
+    // TODO: Strand sort is certainly feasible, but might be quite boring as
+    // it uses an input & output buffer.
+    // Strand,
     Shuffle,
 }
 
@@ -164,8 +170,11 @@ impl std::fmt::Display for SortingAlgorithm {
             Counting => write("Counting sort"),
             Pigeonhole => write("Pigeonhole sort"),
             QuickSort => write("QuickSort"),
-            Sleep => write("Sleep sort"),
+            Sleep => write("Sleep sort (not stable)"),
             Shuffle => write("Shuffle"),
+            Bingo => write("Bingo sort"),
+            Bucket => write("Bucket sort"),
+            Timsort => write("TimSort"),
         }
     }
 }
