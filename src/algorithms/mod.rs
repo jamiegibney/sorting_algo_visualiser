@@ -10,6 +10,7 @@ use SortingAlgorithm as SA;
 mod bogo;
 mod bubble;
 mod bucket;
+mod sleep;
 mod counting;
 mod cocktail;
 mod comb;
@@ -36,6 +37,7 @@ use cocktail::Cocktail;
 use comb::Comb;
 use cycle::Cycle;
 use gnome::Gnome;
+use sleep::Sleep;
 use heap::Heap;
 use counting::Counting;
 use insertion::Insertion;
@@ -83,6 +85,8 @@ pub enum SortingAlgorithm {
     #[default]
     Pigeonhole,
 
+    Sleep,
+    
     Merge,
     Heap,
     QuickSort,
@@ -92,8 +96,6 @@ pub enum SortingAlgorithm {
     // Timsort,
     // Strand,
     // Bitonic,
-    // Sleep,
-    // Tag,
     // Tree,
     // Bingo,
     Shuffle,
@@ -162,6 +164,7 @@ impl std::fmt::Display for SortingAlgorithm {
             Counting => write("Counting sort"),
             Pigeonhole => write("Pigeonhole sort"),
             QuickSort => write("QuickSort"),
+            Sleep => write("Sleep sort"),
             Shuffle => write("Shuffle"),
         }
     }
@@ -204,6 +207,7 @@ impl Algorithms {
             (SA::Counting, Box::new(Counting::new())),
             (SA::Pigeonhole, Box::new(Pigeonhole::new())),
             (SA::QuickSort, Box::new(QuickSort::new())),
+            (SA::Sleep, Box::new(Sleep::new())),
             (SA::Shuffle, Box::new(Shuffle::new())),
         ];
 
