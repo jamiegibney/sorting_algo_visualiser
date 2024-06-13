@@ -17,7 +17,7 @@ pub const CIRCLE_RADIUS: f32 = 300.0;
 // pub const READ_COLOR: Rgb<f32> =
 //     Rgb { red: 0.0, green: 0.8, blue: 1.0, standard: PD };
 pub const SWAP_COLOR: Rgb<f32> =
-    Rgb { red: 0.0, green: 1.0, blue: 0.0, standard: PD };
+    Rgb { red: 0.9, green: 1.0, blue: 0.9, standard: PD };
 pub const COMPARE_TRUE_COLOR: Rgb<f32> =
     Rgb { red: 1.0, green: 1.0, blue: 1.0, standard: PD };
 pub const COMPARE_FALSE_COLOR: Rgb<f32> =
@@ -152,7 +152,7 @@ impl Updatable for ColorWheel {
                     self.overlay_colors[b] = Some(overlay);
                 }
                 SortOperation::Swap { a, b } => {
-                    let overlay = Overlay::Invert;
+                    let overlay = Overlay::Override(SWAP_COLOR);
                     self.overlay_colors[a] = Some(overlay);
                     self.overlay_colors[b] = Some(overlay);
                 }
