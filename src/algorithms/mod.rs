@@ -3,7 +3,7 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use SortingAlgorithm as SA;
 
@@ -56,7 +56,7 @@ use timsort::Timsort;
 /// Trait for sorting algorithms.
 pub trait SortProcessor: Debug + Send + Sync {
     /// The sorting process. This should mutate the provided array to "sort"
-    /// it — however that is defined for the algorithm.
+    /// it, whatever that may mean for the algorithm.
     fn process(&mut self, arr: &mut SortArray);
 }
 
@@ -74,23 +74,20 @@ pub enum SortingAlgorithm {
     Shell,
     Comb,
     Cocktail,
-    // TODO
+
     Bingo,
     Cycle,
-    // TODO
-    Bucket,
+    // TODO: Bucket sort...
     Counting,
-    #[default]
     Pigeonhole,
 
     Merge,
     Heap,
-    // TODO
     Timsort,
     QuickSort,
 
-    // TODO: none of the radix sorts are currently implemented.
-    // refer to this LSD sort:
+    // TODO: none of the radix sorts are currently implemented. refer to this
+    // LSD sort:
     // https://github.com/w0rthy/ArrayVisualizer/blob/master/src/array/visualizer/sort/RadixLSD.java
     // and this bubble sort to understand the API:
     // https://github.com/w0rthy/ArrayVisualizer/blob/master/src/array/visualizer/sort/BubbleSort.java
@@ -100,6 +97,7 @@ pub enum SortingAlgorithm {
     RadixLSD10,
     InPlaceRadixLSD4,
     InPlaceRadixLSD10,
+    #[default]
     RadixMSD4,
     RadixMSD10,
 
@@ -119,6 +117,10 @@ pub enum SortingAlgorithm {
 unsafe impl bytemuck::NoUninit for SortingAlgorithm {}
 
 impl SortingAlgorithm {
+    /// Cycles to the next sorting algorithm. This never cycles over
+    /// [`SortingAlgorithm::Shuffle`], and if the current algorithm is
+    /// [`SortingAlgorithm::Shuffle`] then this method will cycle to
+    /// [`SortingAlgorithm::Bubble`].
     pub fn cycle_next(&mut self) {
         if matches!(*self, Self::Shuffle) {
             *self = Self::Bubble;
@@ -132,6 +134,10 @@ impl SortingAlgorithm {
         }
     }
 
+    /// Cycles to the previous sorting algorithm. This never cycles over
+    /// [`SortingAlgorithm::Shuffle`], and if the current algorithm is
+    /// [`SortingAlgorithm::Shuffle`] then this method will cycle to
+    /// [`SortingAlgorithm::Bubble`].
     pub fn cycle_prev(&mut self) {
         if matches!(*self, Self::Shuffle) {
             *self = Self::Bubble;
@@ -147,7 +153,7 @@ impl SortingAlgorithm {
     }
 }
 
-impl std::fmt::Display for SortingAlgorithm {
+impl Display for SortingAlgorithm {
     #[allow(clippy::enum_glob_use)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use SortingAlgorithm::*;
@@ -182,7 +188,7 @@ impl std::fmt::Display for SortingAlgorithm {
             Sleep => write("Sleep sort (not stable)"),
             Shuffle => write("Shuffle"),
             Bingo => write("Bingo sort"),
-            Bucket => write("Bucket sort"),
+            // Bucket => write("Bucket sort"),
             Timsort => write("TimSort"),
         }
     }
@@ -210,7 +216,7 @@ impl Algorithms {
             (SA::Cocktail, Box::new(Cocktail::new())),
             (SA::Bingo, Box::new(Bingo::new())),
             (SA::Cycle, Box::new(Cycle::new())),
-            (SA::Bucket, Box::new(Bucket::new())),
+            // (SA::Bucket, Box::new(Bucket::new())),
             (SA::Counting, Box::new(Counting::new())),
             (SA::Pigeonhole, Box::new(Pigeonhole::new())),
             (SA::Merge, Box::new(Merge::new())),

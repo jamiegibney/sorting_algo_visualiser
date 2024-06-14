@@ -28,6 +28,27 @@ impl Bucket {
 
 impl SortProcessor for Bucket {
     fn process(&mut self, arr: &mut SortArray) {
-        unimplemented!();
+        unimplemented!("this sort is a bit silly for this array, so is left out for now");
+        let n = arr.len();
+        self.buckets.resize(n, vec![]);
+
+        for i in 0..n {
+            let arr_i = arr.read(i);
+            let bi = n * arr_i;
+            self.buckets[bi].push(arr_i);
+        }
+
+        for i in 0..n {
+            self.insert(i);
+        }
+
+        let mut idx = 0;
+
+        for i in 0..n {
+            for j in 0..self.buckets[i].len() {
+                arr.write(idx, self.buckets[i][j]);
+                idx += 1;
+            }
+        }
     }
 }

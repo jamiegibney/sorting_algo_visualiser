@@ -23,7 +23,7 @@ impl Merge {
         self.sort(arr, begin, mid, end);
     }
 
-    fn sort(
+    pub fn sort(
         &mut self,
         arr: &mut SortArray,
         left: usize,
