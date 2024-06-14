@@ -16,7 +16,7 @@ num-traits = "0.2.19"
 parking_lot = "0.12.3"
 
 [profile.dev]
-debug = "line-tables-only"
+debug = "full"
 opt-level = 0
 
 [profile.release]
