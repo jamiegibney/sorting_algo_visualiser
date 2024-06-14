@@ -87,6 +87,11 @@ impl ColorWheel {
         &mut self.color_indices
     }
 
+    /// Clears the overlay colors.
+    pub fn clear_overlay(&mut self) {
+        self.overlay_colors.fill(None);
+    }
+
     /// Precomputes the positions of all of the circle's vertices.
     fn set_mesh_vertices(&mut self) {
         self.vertices[0] = Vec3::ZERO;
@@ -136,7 +141,7 @@ impl ColorWheel {
 
 impl Updatable for ColorWheel {
     fn update(&mut self, app: &App, update: UpdateData) {
-        self.overlay_colors.fill(None);
+        self.clear_overlay();
 
         for &op in self.overlay_operations.iter() {
             match op {
@@ -152,7 +157,7 @@ impl Updatable for ColorWheel {
                     self.overlay_colors[b] = Some(overlay);
                 }
                 SortOperation::Swap { a, b } => {
-                    let overlay = Overlay::Override(SWAP_COLOR);
+                    let overlay = Overlay::Lighten(0.1);
                     self.overlay_colors[a] = Some(overlay);
                     self.overlay_colors[b] = Some(overlay);
                 }
