@@ -5,9 +5,10 @@ use crossbeam_channel::Receiver;
 use nannou_audio::*;
 use std::sync::atomic::AtomicU32;
 use std::time::Instant;
+use thread_pool::ThreadPool;
 
 mod compressor;
-mod effects;
+pub mod effects;
 mod envelope;
 mod process;
 mod sine;
@@ -15,8 +16,8 @@ mod tri;
 mod voice;
 
 use compressor::Compressor;
-use effects::*;
-use effects::{AudioEffect, StereoEffect};
+pub use effects::*;
+pub use effects::{AudioEffect, StereoEffect};
 pub use voice::{VoiceHandler, NUM_VOICES};
 
 pub const MAJ_PENT_SCALE: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
@@ -29,7 +30,18 @@ pub const SAMPLE_RATE: u32 = 48000;
 /// The number of audio channels.
 pub const NUM_CHANNELS: usize = 2;
 /// The app's audio buffer size.
-pub const BUFFER_SIZE: usize = 1 << 8; // 256
+pub const BUFFER_SIZE: usize = 1 << 9; // 512
+
+/// The number of threads used for concurrent audio generation.
+const NUM_AUDIO_THREADS: usize = 8;
+
+/// The types of oscillators available.
+#[derive(Clone, Copy, Debug, Default)]
+pub enum OscillatorType {
+    #[default]
+    Sine,
+    Tri,
+}
 
 /// Trait for oscillators.
 pub trait Oscillator: std::fmt::Debug {
@@ -57,15 +69,19 @@ pub struct Audio {
     note_receiver: Receiver<NoteEvent>,
     /// The sample rate.
     sample_rate: u32,
+
     /// The audio voice handler.
     voice_handler: VoiceHandler,
 
     callback_timer: Arc<Atomic<InstantTime>>,
 
     voice_counter: Arc<AtomicU32>,
+    thread_pool: ThreadPool,
 
     running: bool,
     compressor: Compressor,
+    low_pass: StereoEffect<Lowpass>,
+    dsp_load: Arc<Atomic<f32>>,
 }
 
 impl Audio {
@@ -74,17 +90,26 @@ impl Audio {
         note_receiver: Receiver<NoteEvent>,
         voice_counter: Arc<AtomicU32>,
     ) -> Self {
+        const VOICES_PER_HANDLER: usize = NUM_VOICES / NUM_AUDIO_THREADS;
+        let sr = SAMPLE_RATE as f32;
+
         Self {
             note_receiver,
             sample_rate: SAMPLE_RATE,
-            voice_handler: VoiceHandler::new(SAMPLE_RATE as f32),
+            voice_handler: VoiceHandler::new::<NUM_VOICES>(sr),
+
+            thread_pool: ThreadPool::build(NUM_AUDIO_THREADS)
+                .expect("failed to allocate audio threads"),
+
             callback_timer: Arc::new(Atomic::new(InstantTime(Instant::now()))),
             voice_counter,
             running: true,
-            compressor: Compressor::new(NUM_CHANNELS, SAMPLE_RATE as f32)
+            compressor: Compressor::new(NUM_CHANNELS, sr)
                 .with_threshold_db(-18.0)
-                .with_ratio(50.0)
-                .with_knee_width(8.0),
+                .with_ratio(100.0)
+                .with_knee_width(12.0),
+            low_pass: StereoEffect::splat(Lowpass::new(sr).with_freq(8000.0)),
+            dsp_load: Arc::new(Atomic::new(0.0)),
         }
     }
 
@@ -96,6 +121,11 @@ impl Audio {
     /// Returns a reference to the callback timer.
     pub const fn callback_timer(&self) -> &Arc<Atomic<InstantTime>> {
         &self.callback_timer
+    }
+
+    /// Returns a reference to the DSP load level.
+    pub const fn dsp_load(&self) -> &Arc<Atomic<f32>> {
+        &self.dsp_load
     }
 
     /// Updates the voice counter with the current number of active voices.
@@ -131,6 +161,22 @@ impl Audio {
 
     pub fn start(&mut self) {
         self.running = true;
+    }
+
+    /// Processes a buffer "`buf`" by applying `cb` to each sample.
+    ///
+    /// - The first argument to `cb` is the current audio channel,
+    /// - The second argument to `cb` is a mutable reference to the current
+    ///   sample.
+    pub fn process_buffer(
+        buf: &mut Buffer,
+        mut cb: impl FnMut(usize, &mut f32),
+    ) {
+        for fr in buf.frames_mut() {
+            for (ch, smp) in fr.iter_mut().enumerate() {
+                cb(ch, smp);
+            }
+        }
     }
 
     /// Calculates the frequency value of the provided MIDI note value, relative
