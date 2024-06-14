@@ -11,7 +11,7 @@ const ENVELOPE_LENGTH: f32 = 1.0;
 
 /// A single voice.
 #[derive(Debug)]
-struct Voice<O: Oscillator = SineOsc> {
+struct Voice<O: Oscillator = TriOsc> {
     id: u64,
     sample_rate: f32,
     osc: O,
@@ -66,6 +66,8 @@ pub struct VoiceHandler {
     id_counter: u64,
     /// The behavior for overriding voices when all are in use.
     override_behavior: OverrideVoiceBehavior,
+
+    envelope_data: Arc<[u8]>,
 }
 
 impl VoiceHandler {
@@ -74,11 +76,17 @@ impl VoiceHandler {
 
     /// Creates a new `VoiceHandler`.
     pub fn new(sample_rate: f32) -> Self {
+        // ENVELOPE_DATA_PATH
         Self {
             voices: [Self::EMPTY_VOICE; NUM_VOICES],
             sample_rate,
             id_counter: 0,
             override_behavior: OverrideVoiceBehavior::default(),
+            envelope_data: {
+                std::fs::read(ENVELOPE_DATA_PATH)
+                    .expect("failed to read envelope data")
+                    .into()
+            },
         }
     }
 
@@ -205,10 +213,10 @@ impl VoiceHandler {
         Voice {
             id: self.next_voice_id(),
             sample_rate: self.sample_rate,
-            osc: SineOsc::new(freq, self.sample_rate),
+            osc: TriOsc::new(freq, self.sample_rate),
             freq,
             amp,
-            envelope: AmpEnvelope::new(),
+            envelope: AmpEnvelope::new(&self.envelope_data),
             pan: nannou::rand::random_f32() * 2.0,
         }
     }

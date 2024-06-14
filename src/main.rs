@@ -21,10 +21,13 @@ use prelude::*;
 use process::*;
 use ui::{Ui, UiData};
 
+const ENVELOPE_DATA_PATH: &str = "src/audio/envelope_data";
+
+// TODO: move this to the audio module
 fn generate_envelope_data() {
     let sr = 48000.0;
-    let attack_len = 0.02;
-    let release_len = 0.03;
+    let attack_len = 0.01;
+    let release_len = 0.035;
 
     let attack = (attack_len * sr).round() as usize;
     let release = (release_len * sr).round() as usize;
@@ -43,7 +46,7 @@ fn generate_envelope_data() {
 
     start.append(&mut end);
 
-    std::fs::write("src/audio/envelope_data", unsafe {
+    std::fs::write(ENVELOPE_DATA_PATH, unsafe {
         std::slice::from_raw_parts(
             start.as_ptr().cast::<u8>(),
             start.len() * std::mem::size_of::<f32>(),
@@ -80,6 +83,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
 }
 
 fn main() {
-    // generate_envelope_data();
+    generate_envelope_data();
     nannou::app(Model::new).update(update).run();
 }
