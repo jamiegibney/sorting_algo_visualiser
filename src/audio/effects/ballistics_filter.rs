@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BallisticsFilter {
     /// A buffer for storing the last set of output samples.
     y_old: Vec<f32>,

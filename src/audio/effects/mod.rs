@@ -3,18 +3,20 @@ use std::fmt::Debug;
 use super::*;
 use nannou_audio::Buffer;
 
-pub mod delay;
-pub mod ring_buf;
 pub mod ballistics_filter;
+pub mod delay;
+pub mod low_pass;
+pub mod ring_buf;
 pub mod verb;
 
-pub use delay::DelayLine;
 pub use ballistics_filter::BallisticsFilter;
+pub use delay::DelayLine;
+pub use low_pass::Lowpass;
 pub use ring_buf::RingBuffer;
 pub use verb::Reverb;
 
 /// Trait for audio processing effects.
-pub trait AudioEffect: Debug {
+pub trait AudioEffect: Debug + Clone {
     /// Processes a single sample of audio.
     fn tick(&mut self, channel: usize, sample: f32) -> f32;
     /// The sample rate of this audio effect.
@@ -33,7 +35,7 @@ pub trait AudioEffect: Debug {
 }
 
 /// A stereo wrapper of two mono effects.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StereoEffect<E: AudioEffect> {
     /// The effect for the left stereo channel.
     pub l: E,
@@ -45,6 +47,10 @@ impl<E: AudioEffect> StereoEffect<E> {
     /// Creates a new `StereoEffect` from two `AudioEffect`s.
     pub const fn new(l: E, r: E) -> Self {
         Self { l, r }
+    }
+
+    pub fn splat(effect: E) -> Self {
+        Self { l: effect.clone(), r: effect }
     }
 
     /// Unwraps the stored audio effects.
