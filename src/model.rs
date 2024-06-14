@@ -48,7 +48,7 @@ impl Model {
             .expect("failed to initialize main window");
 
         let color_wheel = ColorWheel::new();
-        let (note_tx, note_rx) = bounded(8);
+        let (note_tx, note_rx) = bounded(64);
 
         let audio_voice_counter = Arc::new(AtomicU32::new(0));
 
