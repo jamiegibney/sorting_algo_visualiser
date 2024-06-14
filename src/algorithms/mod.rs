@@ -64,6 +64,7 @@ pub trait SortProcessor: Debug + Send + Sync {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum SortingAlgorithm {
     Bogo,
+    #[default]
     Stooge,
 
     Gnome,
@@ -97,7 +98,6 @@ pub enum SortingAlgorithm {
     RadixLSD10,
     InPlaceRadixLSD4,
     InPlaceRadixLSD10,
-    #[default]
     RadixMSD4,
     RadixMSD10,
 
