@@ -11,6 +11,7 @@ pub struct UiData {
     pub player_time: f32,
     pub speed: f32,
     pub num_voices: u32,
+    pub dsp_load: f32,
     pub sorted: bool,
     pub computing: bool,
 }
@@ -33,6 +34,7 @@ impl Ui {
             player_time,
             speed,
             num_voices,
+            dsp_load,
             sorted,
             computing,
         } = ui_data;
@@ -56,8 +58,9 @@ impl Ui {
             player_time * speed.recip()
         );
         let voices = format!(
-            "Active audio voices: {num_voices}/{}",
-            super::audio::NUM_VOICES
+            "Audio voices: {num_voices}/{} (DSP {:.1} %)",
+            super::audio::NUM_VOICES,
+            dsp_load * 100.0
         );
 
         self.text =

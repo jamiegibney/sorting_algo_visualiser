@@ -28,8 +28,9 @@ pub struct Model {
 
     sorted: bool,
     audio_voice_counter: Arc<AtomicU32>,
-    computing: Arc<AtomicBool>,
+    dsp_load: Arc<Atomic<f32>>,
 
+    computing: Arc<AtomicBool>,
     auto_play_ch: (Arc<Sender<()>>, Receiver<()>),
 
     update_data: UpdateData,
@@ -48,12 +49,13 @@ impl Model {
             .expect("failed to initialize main window");
 
         let color_wheel = ColorWheel::new();
-        let (note_tx, note_rx) = bounded(64);
+        let (note_tx, note_rx) = bounded(20);
 
         let audio_voice_counter = Arc::new(AtomicU32::new(0));
 
         let audio_model = Audio::new(note_rx, Arc::clone(&audio_voice_counter));
         let audio_callback_timer = Arc::clone(audio_model.callback_timer());
+        let dsp_load = Arc::clone(audio_model.dsp_load());
 
         let (ap_tx, ap_rx) = bounded(1);
 
@@ -80,9 +82,11 @@ impl Model {
                 .expect("failed to allocate sorting thread"),
 
             sorted: true,
-            audio_voice_counter,
-            computing: Arc::new(AtomicBool::new(false)),
 
+            audio_voice_counter,
+            dsp_load,
+
+            computing: Arc::new(AtomicBool::new(false)),
             auto_play_ch: (Arc::new(ap_tx), ap_rx),
 
             update_data: UpdateData {
@@ -158,6 +162,7 @@ impl Model {
             player_time: player.playback_time(),
             speed: player.speed(),
             num_voices: self.audio_voice_counter.load(Relaxed),
+            dsp_load: self.dsp_load.load(Relaxed),
             sorted: player.is_sorted(),
             computing: self.computing.load(Relaxed),
         });
