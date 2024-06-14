@@ -11,17 +11,17 @@ const ENVELOPE_LENGTH: f32 = 1.0;
 
 /// A single voice.
 #[derive(Debug)]
-struct Voice<O: Oscillator = TriOsc> {
+struct Voice {
     id: u64,
     sample_rate: f32,
-    osc: O,
+    osc: Box<dyn Oscillator + Send>,
     freq: f32,
     envelope: AmpEnvelope,
     amp: f32,
     pan: f32,
 }
 
-impl<O: Oscillator> Voice<O> {
+impl Voice {
     /// Sets the frequency of the voice.
     pub fn set_frequency(&mut self, new_freq: f32) {
         self.freq = new_freq;
@@ -34,8 +34,9 @@ impl<O: Oscillator> Voice<O> {
     }
 
     pub fn balance(&self) -> (f32, f32) {
-        let left = (1.0 - self.pan).clamp(0.0, 1.0);
-        let right = 1.0 - (2.0 - self.pan).clamp(0.0, 1.0);
+        let pan = (self.pan + 1.0) * 0.5;
+        let left = pan;
+        let right = 1.0 - pan;
 
         (left, right)
     }
@@ -59,7 +60,7 @@ pub enum OverrideVoiceBehavior {
 #[derive(Debug)]
 pub struct VoiceHandler {
     /// All voices.
-    voices: [Option<Voice>; NUM_VOICES],
+    voices: Vec<Option<Voice>>,
     /// The sample rate.
     sample_rate: f32,
     /// A counter for keeping track of old voices.
@@ -67,7 +68,7 @@ pub struct VoiceHandler {
     /// The behavior for overriding voices when all are in use.
     override_behavior: OverrideVoiceBehavior,
 
-    envelope_data: Arc<[u8]>,
+    envelope_data: Box<[u8]>,
 }
 
 impl VoiceHandler {
@@ -75,18 +76,15 @@ impl VoiceHandler {
     const EMPTY_VOICE: Option<Voice> = None;
 
     /// Creates a new `VoiceHandler`.
-    pub fn new(sample_rate: f32) -> Self {
-        // ENVELOPE_DATA_PATH
+    pub fn new<const N: usize>(sample_rate: f32) -> Self {
         Self {
-            voices: [Self::EMPTY_VOICE; NUM_VOICES],
+            voices: Vec::from([const { None }; N]),
             sample_rate,
             id_counter: 0,
             override_behavior: OverrideVoiceBehavior::default(),
-            envelope_data: {
-                std::fs::read(ENVELOPE_DATA_PATH)
-                    .expect("failed to read envelope data")
-                    .into()
-            },
+            envelope_data: std::fs::read(ENVELOPE_DATA_PATH)
+                .expect("failed to read envelope data")
+                .into_boxed_slice(),
         }
     }
 
@@ -122,7 +120,7 @@ impl VoiceHandler {
     }
 
     /// Starts a new voice.
-    pub fn new_voice(&mut self, freq: f32, amp: f32) {
+    pub fn new_voice(&mut self, event: NoteEvent) {
         #[allow(clippy::enum_glob_use)]
         use OverrideVoiceBehavior::*;
         // println!("Spawning new voice at frequency {freq} Hz");
@@ -130,7 +128,7 @@ impl VoiceHandler {
         if let Some(free_idx) = self.voices.iter().position(Option::is_none) {
             // self.create_voice() is inlined here in case no voices are free
             // (in which case no new voice is ever created)
-            self.voices[free_idx] = Some(self.create_voice(freq, amp));
+            self.voices[free_idx] = Some(self.create_voice(event));
             return;
         }
 
@@ -138,7 +136,7 @@ impl VoiceHandler {
             return;
         }
 
-        let new_voice = self.create_voice(freq, amp);
+        let new_voice = self.create_voice(event);
 
         match self.override_behavior {
             ReplaceOldest => {
@@ -209,15 +207,24 @@ impl VoiceHandler {
     }
 
     /// Returns a new voice.
-    fn create_voice(&mut self, freq: f32, amp: f32) -> Voice {
+    fn create_voice(&mut self, event: NoteEvent) -> Voice {
         Voice {
             id: self.next_voice_id(),
             sample_rate: self.sample_rate,
-            osc: TriOsc::new(freq, self.sample_rate),
-            freq,
-            amp,
+            osc: match event.osc() {
+                OscillatorType::Sine => {
+                    Box::new(SineOsc::new(event.freq(), self.sample_rate))
+                        as Box<dyn Oscillator + Send>
+                }
+                OscillatorType::Tri => {
+                    Box::new(TriOsc::new(event.freq(), self.sample_rate))
+                        as Box<dyn Oscillator + Send>
+                }
+            },
+            freq: event.freq(),
+            amp: event.amp(),
             envelope: AmpEnvelope::new(&self.envelope_data),
-            pan: nannou::rand::random_f32() * 2.0,
+            pan: event.pan(),
         }
     }
 

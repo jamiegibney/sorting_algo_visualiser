@@ -2,10 +2,12 @@ use super::*;
 use nannou_audio::Buffer;
 
 /// The maximum block size for audio processing.
-pub const MAX_BLOCK_SIZE: usize = 64;
+pub const MAX_BLOCK_SIZE: usize = 128;
+const BUFFER_TIME: f32 = BUFFER_SIZE as f32 / SAMPLE_RATE as f32;
 
 /// The audio processing callback.
 pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
+    let buf_start = Instant::now();
     if !audio.running {
         buffer.fill(0.0);
         return;
@@ -26,7 +28,7 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
                 Some(event)
                     if (event.sample_offset() as usize) <= block_start =>
                 {
-                    audio.voice_handler.new_voice(event.freq(), event.amp());
+                    audio.voice_handler.new_voice(event);
 
                     next_event = audio.note_receiver().try_recv().ok();
                 }
@@ -41,7 +43,7 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
         }
 
         // TODO(jamiegibney): master gain control?
-        let mut gain = [0.2; MAX_BLOCK_SIZE];
+        let mut gain = [0.08; MAX_BLOCK_SIZE];
 
         // process voices and clean any which are finished
         audio
@@ -57,6 +59,9 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
     update_callback_timer(audio);
 
     audio.update_voice_counter();
+
+    let elapsed = buf_start.elapsed().as_secs_f32();
+    audio.dsp_load.store(elapsed / BUFFER_TIME, Relaxed);
 }
 
 fn update_callback_timer(audio: &Audio) {
@@ -71,5 +76,11 @@ fn update_callback_timer(audio: &Audio) {
 
 /// Processes any audio effects.
 fn process_effects(audio: &mut Audio, buffer: &mut Buffer) {
-    audio.compressor.process_block(buffer);
+    Audio::process_buffer(buffer, |ch, smp| {
+        *smp = audio.low_pass.tick(ch, *smp);
+        *smp = audio.compressor.tick(ch, *smp);
+
+        // TODO: for safety...
+        *smp = (*smp).clamp(-1.0, 1.0);
+    });
 }
