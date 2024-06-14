@@ -8,15 +8,24 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 
 ## TODO
 
+#### Fixes
 - [ ] Fix sort operation slice bounds
 - [ ] Fix crash when resizing array during playback
+
+#### Refactors
 - [ ] Separate the sorting array to a separate type, which is held by a "manager" which offers methods like prepare, capture dumping, resizing etc. This prevents sorting algorithms from modifying the actual array beyond the usual sorting operations.
+- [ ] Documentation for more of the core API
+- [ ] Better names for certain types/functions
+
+#### Features
+- [ ] Allow user to mute audio
 - [ ] Add certain array size restrictions for particular algorithms (such as bogo or stooge sort)
-- [ ] Add new sorting algorithms
-    - [x] TimSort
-    - [x] Radix sorts
+- [ ] Add sorting algorithms
     - [ ] Bucket sort
     - [ ] Bingo sort (sort of there...)
+    - [ ] Strand sort?
+    - [ ] Tree sort?
+    - [ ] Bitonic sort?
 - [ ] UI controls
     - [ ] Playback controls
     - [ ] Menu for sorting algorithms
