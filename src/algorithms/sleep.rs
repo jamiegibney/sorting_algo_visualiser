@@ -35,12 +35,11 @@ impl SortProcessor for Sleep {
             th.join();
         }
 
-        let out = self.output_arr.lock();
+        let mut out = self.output_arr.lock();
         for i in 0..n {
             arr.write(i, out[i]);
         }
-        drop(out);
 
-        self.output_arr.lock().clear();
+        out.clear();
     }
 }
