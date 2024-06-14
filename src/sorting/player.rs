@@ -1,12 +1,13 @@
 use crate::prelude::*;
-use std::{os::unix::fs::DirBuilderExt, rc::Rc};
+use crate::thread_pool::ThreadPool;
+use std::{os::unix::fs::DirBuilderExt, rc::Rc, thread, time::Duration};
 
-const MAX_AUDIO_NOTES_PER_SECOND: usize = 10000;
+const MAX_AUDIO_NOTES_PER_SECOND: usize = 5000;
 
 #[derive(Debug)]
 struct AudioState {
     callback_timer: Arc<Atomic<InstantTime>>,
-    note_event_sender: Sender<NoteEvent>,
+    note_event_sender: Arc<Sender<NoteEvent>>,
 }
 
 #[derive(Debug)]
@@ -21,6 +22,8 @@ pub struct Player {
     audio: AudioState,
 
     ops_last_frame: Arc<[SortOperation]>,
+
+    audio_msg_thread: ThreadPool,
 }
 
 impl Player {
@@ -39,9 +42,15 @@ impl Player {
 
             is_playing: false,
 
-            audio: AudioState { callback_timer, note_event_sender },
+            audio: AudioState {
+                callback_timer,
+                note_event_sender: Arc::new(note_event_sender),
+            },
 
             ops_last_frame: [].into(),
+
+            audio_msg_thread: ThreadPool::build(1)
+                .expect("failed to allocate audio msg thread"),
         }
     }
 
@@ -157,49 +166,79 @@ impl Player {
         Arc::clone(&self.ops_last_frame)
     }
 
-    fn send_note_event(&self, op: SortOperation, timing: u32) {
-        assert!(
-            self.capture.is_some(),
-            "attempted to post note event with no valid capture"
-        );
+    fn send_note_events(&self, delta_time: f32) {
+        let audio_ops_this_frame =
+            (MAX_AUDIO_NOTES_PER_SECOND as f32 * delta_time) as usize;
+        let time_between = delta_time / (audio_ops_this_frame as f32) * 0.8;
 
         // This will not panic, as we know capture is Some
         let len_f = self.capture.as_ref().unwrap().len() as f32;
-        let (mut freq, mut amp) = (0.5, 1.0);
+        let ops_last_frame = Arc::clone(&self.ops_last_frame);
+        let event_sender = Arc::clone(&self.audio.note_event_sender);
+        let callback_timer = Arc::clone(&self.audio.callback_timer);
 
-        match op {
-            SortOperation::Write { idx, .. } => {
-                freq = idx as f32 / len_f * 0.5;
-                amp = 0.6;
-            }
-            SortOperation::Read { idx } => {
-                freq = idx as f32 / len_f;
-                amp = 0.5;
-            }
-            SortOperation::Swap { a, b } => {
-                freq = (a as f32 / len_f + b as f32 / len_f) * 0.25;
-                amp = 0.7;
-            }
-            SortOperation::Compare { a, b, .. } => {
-                freq = (a as f32 / len_f + b as f32 / len_f) * 0.5;
-                amp = 0.4;
-            }
-        }
+        self.audio_msg_thread.execute(move || {
+            let map = |x: f32| (x * 2.0 - 1.0).clamp(-1.0, 1.0) * 0.5;
 
-        _ = self.audio.note_event_sender.try_send(NoteEvent {
-            freq: Self::map_freq(freq),
-            amp,
-            timing,
+            for &op in ops_last_frame.iter().take(audio_ops_this_frame) {
+                let (mut freq, mut amp, mut pan) = (0.5, 1.0, 0.0);
+                let mut osc = OscillatorType::default();
+
+                match op {
+                    SortOperation::Write { idx, .. } => {
+                        let i = idx as f32 / len_f;
+                        freq = i * 0.5;
+                        amp = 0.6;
+                        pan = i;
+                    }
+                    SortOperation::Read { idx } => {
+                        let i = idx as f32 / len_f;
+                        freq = idx as f32 / len_f;
+                        amp = 0.5;
+                        pan = i;
+                        osc = OscillatorType::Tri;
+                    }
+                    SortOperation::Swap { a, b } => {
+                        let a_f = a as f32 / len_f;
+                        let b_f = b as f32 / len_f;
+                        freq = (a_f + b_f) * 0.25;
+                        amp = 0.7;
+                        pan = (a_f + b_f) * 0.5;
+                    }
+                    SortOperation::Compare { a, b, .. } => {
+                        let a_f = a as f32 / len_f;
+                        let b_f = b as f32 / len_f;
+                        freq = (a_f + b_f) * 0.5;
+                        amp = 0.4;
+                        pan = freq;
+                        osc = OscillatorType::Tri;
+                    }
+                }
+
+                thread::sleep(Duration::from_secs_f32(time_between));
+
+                let samples_exact =
+                    callback_timer.load(Relaxed).elapsed().as_secs_f32()
+                        * SAMPLE_RATE as f32;
+
+                _ = event_sender.try_send(NoteEvent {
+                    osc,
+                    freq: Self::map_freq(freq),
+                    amp,
+                    timing: samples_exact.round() as u32 % BUFFER_SIZE as u32,
+                    pan: map(pan + random_range(-0.5, 0.5)),
+                });
+            }
         });
     }
 
     fn map_freq(freq: f32) -> f32 {
         const MIN_NOTE: f32 = 36.0;
-        const MAX_NOTE: f32 = 112.0;
+        const MAX_NOTE: f32 = 104.0;
 
         // let x = freq.clamp(0.0, 1.0).powf(1.1);
         // let x = 1.0 - (1.0 - freq.clamp(0.0, 1.0)).powf(1.2);
-        let n = 3.0;
+        let n = 5.0;
         let x = ((n - 1.0) * freq.clamp(0.0, 1.0) + 1.0).log(n);
         let note = (MAX_NOTE - MIN_NOTE).mul_add(x, MIN_NOTE);
         // let quantized = Audio::quantize_to_scale(&MINOR_SCALE, note, 59.0);
@@ -251,12 +290,6 @@ impl Updatable for Player {
         self.ops_last_frame =
             cap.set_progress(curr_progress + progress_per_frame);
 
-        let audio_ops_this_frame =
-            (MAX_AUDIO_NOTES_PER_SECOND as f32 * update.delta_time) as usize;
-
-        // post audio messages
-        for &op in self.ops_last_frame.iter().take(audio_ops_this_frame) {
-            self.send_note_event(op, self.buffer_sample_offset());
-        }
+        self.send_note_events(update.delta_time);
     }
 }
