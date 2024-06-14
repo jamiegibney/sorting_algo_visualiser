@@ -1,9 +1,9 @@
 use super::*;
 
-pub const DEFAULT_ATTACK_TIME: f32 = 3.0;
-pub const DEFAULT_RELEASE_TIME: f32 = 180.0;
+pub const DEFAULT_ATTACK_TIME: f32 = 30.0;
+pub const DEFAULT_RELEASE_TIME: f32 = 500.0;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Compressor {
     sample_rate: f32,
 
