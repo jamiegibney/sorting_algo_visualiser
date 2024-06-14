@@ -3,22 +3,33 @@ use super::*;
 #[derive(Debug)]
 pub struct RadixLSDInPlace {
     base: usize,
-    analysis: Vec<usize>,
     bins: Vec<usize>,
 }
 
 impl RadixLSDInPlace {
     pub fn new(base: usize) -> Self {
-        Self { base, analysis: vec![], bins: vec![0; base - 1] }
+        Self { base, bins: vec![0; base - 1] }
+    }
+
+    fn swap_to(arr: &mut SortArray, pos: usize, to: usize) {
+        if to > pos {
+            for i in pos..to {
+                arr.swap(i, i + 1);
+            }
+        }
+        else {
+            for i in (to..pos).rev() {
+                arr.swap(i, i - 1);
+            }
+        }
     }
 }
 
 impl SortProcessor for RadixLSDInPlace {
     fn process(&mut self, arr: &mut SortArray) {
-        unimplemented!();
         let mut pos = 0;
 
-        let max_power = analyze(arr, &mut self.analysis, self.base);
+        let max_power = max_power(arr, self.base);
 
         for p in 0..=max_power {
             pos = 0;
@@ -29,11 +40,12 @@ impl SortProcessor for RadixLSDInPlace {
 
                 if digit == 0 {
                     pos += 1;
-                    self.analysis[pos] = 0;
                 }
                 else {
-                    for j in 0..self.bins.len() {
-                        // self.analysis
+                    Self::swap_to(arr, pos, self.bins[digit-1]);
+
+                    for j in (1..digit).rev() {
+                        self.bins[j - 1] -= 1;
                     }
                 }
             }
