@@ -24,7 +24,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub const DEFAULT_PLAYBACK_TIME: f32 = 3.0;
+    pub const DEFAULT_PLAYBACK_TIME: f32 = 8.0;
 
     pub fn new(
         len: usize,
@@ -201,10 +201,10 @@ impl Player {
         // let x = 1.0 - (1.0 - freq.clamp(0.0, 1.0)).powf(1.2);
         let n = 3.0;
         let x = ((n - 1.0) * freq.clamp(0.0, 1.0) + 1.0).log(n);
-        let note = (MAX_NOTE - MIN_NOTE).mul_add(x, MIN_NOTE).round();
-        let quantized = Audio::quantize_to_scale(&MAJOR_SCALE, note, 63.0);
+        let note = (MAX_NOTE - MIN_NOTE).mul_add(x, MIN_NOTE);
+        // let quantized = Audio::quantize_to_scale(&MINOR_SCALE, note, 59.0);
 
-        Audio::note_to_freq(quantized)
+        Audio::note_to_freq(note)
     }
 
     fn buffer_sample_offset(&self) -> u32 {
