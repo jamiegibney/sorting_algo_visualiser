@@ -1,7 +1,7 @@
 pub use super::*;
 pub use crate::audio::{
-    Audio, InstantTime, BUFFER_SIZE, MAJOR_SCALE, MAJ_PENT_SCALE, MINOR_SCALE,
-    MIN_PENT_SCALE, NUM_VOICES, SAMPLE_RATE,
+    Audio, AudioEffect, Lowpass, BUFFER_SIZE, MAJOR_SCALE, MAJ_PENT_SCALE,
+    MINOR_SCALE, MIN_PENT_SCALE, NUM_VOICES, SAMPLE_RATE,
 };
 pub use crate::sorting::*;
 pub use crate::Drawable;
