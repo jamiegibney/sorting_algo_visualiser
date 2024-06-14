@@ -6,6 +6,7 @@ use nannou_audio::*;
 use std::sync::atomic::AtomicU32;
 use std::time::Instant;
 
+mod compressor;
 mod effects;
 mod envelope;
 mod process;
@@ -13,7 +14,9 @@ mod sine;
 mod tri;
 mod voice;
 
+use compressor::Compressor;
 use effects::*;
+use effects::{AudioEffect, StereoEffect};
 pub use voice::{VoiceHandler, NUM_VOICES};
 
 pub const MAJ_PENT_SCALE: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
@@ -21,9 +24,11 @@ pub const MIN_PENT_SCALE: [f32; 5] = [0.0, 3.0, 5.0, 7.0, 10.0];
 pub const MAJOR_SCALE: [f32; 7] = [0.0, 2.0, 4.0, 5.0, 7.0, 9.0, 11.0];
 pub const MINOR_SCALE: [f32; 7] = [0.0, 2.0, 3.0, 5.0, 7.0, 8.0, 10.0];
 
-/// The default sample rate.
+/// The app's audio sample rate.
 pub const SAMPLE_RATE: u32 = 48000;
-/// The default buffer size.
+/// The number of audio channels.
+pub const NUM_CHANNELS: usize = 2;
+/// The app's audio buffer size.
 pub const BUFFER_SIZE: usize = 1 << 8; // 256
 
 /// Trait for oscillators.
@@ -60,6 +65,7 @@ pub struct Audio {
     voice_counter: Arc<AtomicU32>,
 
     running: bool,
+    compressor: Compressor,
 }
 
 impl Audio {
@@ -75,6 +81,10 @@ impl Audio {
             callback_timer: Arc::new(Atomic::new(InstantTime(Instant::now()))),
             voice_counter,
             running: true,
+            compressor: Compressor::new(NUM_CHANNELS, SAMPLE_RATE as f32)
+                .with_threshold_db(-18.0)
+                .with_ratio(50.0)
+                .with_knee_width(8.0),
         }
     }
 
@@ -104,7 +114,7 @@ impl Audio {
         let stream = audio_host
             .new_output_stream(self)
             .render(process::process)
-            .channels(2)
+            .channels(NUM_CHANNELS)
             .sample_rate(sr)
             .frames_per_buffer(BUFFER_SIZE)
             .build()
@@ -153,5 +163,17 @@ impl Audio {
         }
 
         lower + scale[idx]
+    }
+
+    /// Calculates amplitude in decibels from a linear power level.
+    #[inline]
+    pub fn level_to_db(level: f32) -> f32 {
+        20.0 * level.abs().log10()
+    }
+
+    /// Calculates the linear power level from amplitude as decibels.
+    #[inline]
+    pub fn db_to_level(db_value: f32) -> f32 {
+        10.0f32.powf(db_value / 20.0)
     }
 }

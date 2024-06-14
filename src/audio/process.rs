@@ -41,7 +41,7 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
         }
 
         // TODO(jamiegibney): master gain control?
-        let mut gain = [0.08; MAX_BLOCK_SIZE];
+        let mut gain = [0.2; MAX_BLOCK_SIZE];
 
         // process voices and clean any which are finished
         audio
@@ -71,5 +71,5 @@ fn update_callback_timer(audio: &Audio) {
 
 /// Processes any audio effects.
 fn process_effects(audio: &mut Audio, buffer: &mut Buffer) {
-    // TODO(jamiegibney): add audio effects.
+    audio.compressor.process_block(buffer);
 }

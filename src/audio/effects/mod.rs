@@ -3,13 +3,15 @@ use std::fmt::Debug;
 use super::*;
 use nannou_audio::Buffer;
 
-mod delay;
-mod ring_buf;
-mod verb;
+pub mod delay;
+pub mod ring_buf;
+pub mod ballistics_filter;
+pub mod verb;
 
-use delay::DelayLine;
-use ring_buf::RingBuffer;
-use verb::Reverb;
+pub use delay::DelayLine;
+pub use ballistics_filter::BallisticsFilter;
+pub use ring_buf::RingBuffer;
+pub use verb::Reverb;
 
 /// Trait for audio processing effects.
 pub trait AudioEffect: Debug {
