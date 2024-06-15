@@ -48,11 +48,11 @@ pub enum OverrideVoiceBehavior {
     /// Replace the oldest voice.
     ReplaceOldest,
     /// Replace the voice with the lowest frequency.
-    #[default]
     ReplaceLowest,
     /// Replace the voice with the highest frequency.
     ReplaceHighest,
     /// Do not replace any active voices.
+    #[default]
     DoNotReplace,
 }
 
@@ -99,7 +99,7 @@ impl VoiceHandler {
         buffer: &mut [f32],
         block_start: usize,
         block_end: usize,
-        gain: [f32; super::process::MAX_BLOCK_SIZE],
+        gain: [f32; MAX_BLOCK_SIZE],
     ) {
         let block_len = block_end - block_start;
 

@@ -1,8 +1,6 @@
 use super::*;
 use nannou_audio::Buffer;
 
-/// The maximum block size for audio processing.
-pub const MAX_BLOCK_SIZE: usize = 64;
 const BUFFER_TIME: f32 = BUFFER_SIZE as f32 / SAMPLE_RATE as f32;
 
 /// The audio processing callback.
