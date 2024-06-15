@@ -18,7 +18,8 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 - [ ] Better names for certain types/functions
 
 #### Features
-- [ ] Parallelise the audio processing, so multiple threads can generate groups of voices and then sum the result on the main audio thread.
+- [x] Parallelise the audio processing, so multiple threads can generate groups of voices and then sum the result on the main audio thread.
+- [ ] Prevent sending audio generation task to thread pool if it's not needed (the challenge is *how* to know when it's not needed)
 - [ ] Allow user to mute audio
 - [ ] Add certain array size restrictions for particular algorithms (such as bogo or stooge sort)
 - [ ] Add sorting algorithms
