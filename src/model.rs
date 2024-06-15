@@ -78,7 +78,7 @@ impl Model {
             target_arr: (0..DEFAULT_RESOLUTION).collect(),
             resolution: DEFAULT_RESOLUTION,
 
-            thread_pool: ThreadPool::build(1)
+            thread_pool: ThreadPool::build(1, None, Some(&["sorting"]))
                 .expect("failed to allocate sorting thread"),
 
             sorted: true,

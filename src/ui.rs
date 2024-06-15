@@ -57,20 +57,19 @@ impl Ui {
             "Speed: {speed:.2}x ({:.2}s playback time)",
             player_time * speed.recip()
         );
-        let voices = format!(
-            "Audio voices: {num_voices}/{} (DSP {:.1} %)",
-            super::audio::NUM_VOICES,
-            dsp_load * 100.0
-        );
+        let voices =
+            format!("Active voices: {num_voices}/{}", super::audio::NUM_VOICES);
+        let dsp = format!("DSP load: {:.1}%", dsp_load * 100.0);
 
-        self.text =
-            format!("{algo}\n{res}\n{speed}\n{info}\n{sorted}\n{voices}");
+        self.text = format!(
+            "{algo}\n{res}\n{speed}\n{info}\n{sorted}\n{voices}\n{dsp}"
+        );
     }
 
     pub fn draw(&self, draw: &Draw) {
         draw.text(&self.text)
             .layout(&default_layout())
-            .xy(vec2(-135.0, -330.0))
+            .xy(vec2(-135.0, -320.0))
             .wh(vec2(500.0, 300.0))
             .color(WHITE);
     }
