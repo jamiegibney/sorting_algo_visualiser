@@ -21,7 +21,7 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 
 #### Features
 - [x] Parallelise the audio processing, so multiple threads can generate groups of voices and then sum the result on the main audio thread.
-- [ ] Allow user to mute audio
+- [x] Allow user to mute audio
 - [ ] Add certain array size restrictions for particular algorithms (such as bogo or stooge sort)
 - [ ] Add sorting algorithms
     - [ ] Bucket sort
