@@ -4,7 +4,7 @@ A sorting algorithm "audio-visualiser", written in Rust and the [nannou](https:/
 
 This app draws a colour wheel, which is made up of a variable number of segments. These segments can be randomly shuffled, and then re-sorted via various different sorting algorithms.
 
-The sorting operations (writes, swaps, comparisons, reads) are tracked and used to update the colour wheel display *and* send messages to the audio thread, which can quantise note values to a musical scale, or simply map array positions to frequency. Up to 256 voices are supported.
+The sorting operations (writes, swaps, comparisons, reads) are tracked and used to update the colour wheel display *and* send messages to the audio thread, which can quantise note values to a musical scale, or simply map array positions to frequency. Up to 512 audio voices are supported.
 
 ## TODO
 
