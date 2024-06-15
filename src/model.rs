@@ -286,6 +286,10 @@ impl Model {
     }
 
     pub fn toggle_audio_processing(&mut self) {
+        // TODO: rather than stopping/starting audio processing, this should
+        // probably just control a volume level and/or prevent voices from being
+        // generated.
+
         self.audio_playing = !self.audio_playing;
         if self.audio_playing {
             println!("Unmuted audio");
