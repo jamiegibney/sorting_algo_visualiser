@@ -49,7 +49,7 @@ impl Model {
             .expect("failed to initialize main window");
 
         let color_wheel = ColorWheel::new();
-        let (note_tx, note_rx) = bounded(20);
+        let (note_tx, note_rx) = bounded(256);
 
         let audio_voice_counter = Arc::new(AtomicU32::new(0));
 
@@ -99,11 +99,17 @@ impl Model {
     }
 
     pub fn set_resolution(&mut self, new_resolution: usize) {
+        // println!("setting resolution to {new_resolution}");
+
+        let mut player = self.player.lock();
+        player.clear_capture();
+        player.clear_ops();
+        drop(player);
+
         self.target_arr = (0..new_resolution).collect();
         self.sort_arr.lock().resize(new_resolution);
         self.color_wheel.resize(new_resolution);
         self.resolution = new_resolution;
-        self.player.lock().clear_capture();
 
         self.sorted = true;
     }
@@ -304,7 +310,10 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         // "recompute"
         Key::R => model.compute(),
         // "shuffle"
-        Key::S => model.shuffle(),
+        Key::S => {
+            // println!("shuffling");
+            model.shuffle();
+        }
         Key::Return => {
             if app.keys.mods.shift() {
                 model.previous_algorithm();
@@ -323,7 +332,7 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         Key::Comma => model.decrease_speed(),
         // "force-sort"
         Key::F => {
-            println!("Forcing-sorting the wheel...");
+            // println!("Forcing-sorting the wheel...");
             model.force_sort();
         }
         _ => {}
