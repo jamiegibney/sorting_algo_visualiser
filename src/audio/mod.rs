@@ -200,6 +200,7 @@ impl Audio {
 
     pub fn stop(&mut self) {
         self.running = false;
+        self.voice_buffers.iter().for_each(|b| b.lock().fill(0.0));
     }
 
     pub fn start(&mut self) {

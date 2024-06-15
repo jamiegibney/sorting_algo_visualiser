@@ -24,11 +24,12 @@ pub struct Model {
     thread_pool: ThreadPool,
 
     audio_stream: Stream<Audio>,
-    resolution: usize,
-
-    sorted: bool,
     audio_voice_counter: Arc<AtomicU32>,
     dsp_load: Arc<Atomic<f32>>,
+    audio_playing: bool,
+
+    sorted: bool,
+    resolution: usize,
 
     computing: Arc<AtomicBool>,
     auto_play_ch: (Arc<Sender<()>>, Receiver<()>),
@@ -83,9 +84,6 @@ impl Model {
 
             sorted: true,
 
-            audio_voice_counter,
-            dsp_load,
-
             computing: Arc::new(AtomicBool::new(false)),
             auto_play_ch: (Arc::new(ap_tx), ap_rx),
 
@@ -95,6 +93,9 @@ impl Model {
             },
 
             audio_stream: audio_model.into_stream(),
+            audio_voice_counter,
+            dsp_load,
+            audio_playing: true,
         }
     }
 
@@ -284,12 +285,18 @@ impl Model {
         self.current_algorithm.load(Relaxed).to_string()
     }
 
-    pub fn stop_audio(&self) {
-        _ = self.audio_stream.send(audio::Audio::stop);
-    }
-
-    pub fn resume_audio(&self) {
-        _ = self.audio_stream.send(audio::Audio::start);
+    pub fn toggle_audio_processing(&mut self) {
+        self.audio_playing = !self.audio_playing;
+        if self.audio_playing {
+            println!("Unmuted audio");
+            _ = self.audio_stream.send(Audio::start);
+        }
+        else {
+            _ = self.audio_stream.send(Audio::stop);
+            self.audio_voice_counter.store(0, Relaxed);
+            self.dsp_load.store(0.0, Relaxed);
+            println!("Muted audio");
+        }
     }
 }
 
@@ -334,6 +341,9 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         Key::F => {
             // println!("Forcing-sorting the wheel...");
             model.force_sort();
+        }
+        Key::M => {
+            model.toggle_audio_processing();
         }
         _ => {}
     }
