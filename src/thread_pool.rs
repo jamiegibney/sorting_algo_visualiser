@@ -7,6 +7,7 @@ use std::{
     },
     thread::{self, JoinHandle},
 };
+use thread_priority;
 
 use PoolCreationError as PCE;
 
@@ -45,20 +46,6 @@ pub enum PoolCreationError {
 }
 
 #[derive(Debug)]
-struct PoisonPill;
-
-impl Drop for PoisonPill {
-    fn drop(&mut self) {
-        if thread::panicking() {
-            println!(
-                "thread {} is panicking!",
-                thread::current().name().unwrap()
-            );
-        }
-    }
-}
-
-#[derive(Debug)]
 struct Worker {
     _id: usize,
     thread: Option<JoinHandle<()>>,
@@ -70,49 +57,50 @@ impl Worker {
         id: usize,
         receiver: ReceiverArc,
         queue: Arc<AtomicUsize>,
+        priority: Option<thread_priority::ThreadPriority>,
+        name: &str,
     ) -> IoResult<Self> {
         let builder = thread::Builder::new();
 
         let is_idle = Arc::new(AtomicBool::new(true));
         let is_idle_ref = Arc::clone(&is_idle);
 
-        let thread =
-            builder
-                .name(format!("sorting thread #{id}"))
-                .spawn(move || loop {
-                    let pill = PoisonPill;
+        let thread = builder
+            .name(format!("thread \"{name}\" (pool id {id})"))
+            .spawn(move || loop {
+                if let Some(priority) = priority {
+                    thread_priority::set_current_thread_priority(priority);
+                }
 
-                    // set the idle state to true
-                    is_idle_ref.store(true, Relaxed);
+                // set the idle state to true
+                is_idle_ref.store(true, Relaxed);
 
-                    // then block and wait for a message (i.e. a task)
-                    let msg = receiver.lock().unwrap().recv();
+                // then block and wait for a message (i.e. a task)
+                let msg = receiver.lock().unwrap().recv();
 
-                    // when a task is received, decrement the queue counter
-                    queue.fetch_sub(1, Relaxed);
-                    // and set the worker thread as not idle
-                    is_idle_ref.store(false, Relaxed);
+                // when a task is received, decrement the queue counter
+                queue.fetch_sub(1, Relaxed);
+                // and set the worker thread as not idle
+                is_idle_ref.store(false, Relaxed);
 
-                    match msg {
-                        Ok(mut job) => {
-                            let result = panic::catch_unwind(
-                                panic::AssertUnwindSafe(|| {
-                                    job();
-                                }),
+                match msg {
+                    Ok(mut job) => {
+                        let result = panic::catch_unwind(
+                            panic::AssertUnwindSafe(|| {
+                                job();
+                            }),
+                        );
+
+                        if let Err(e) = result {
+                            eprintln!(
+                                "thread {:?} panicked!",
+                                thread::current().name().unwrap_or("unnamed"),
                             );
-
-                            if let Err(e) = result {
-                                eprintln!(
-                                    "thread {:?} panicked!",
-                                    thread::current()
-                                        .name()
-                                        .unwrap_or("unnamed"),
-                                );
-                            }
                         }
-                        Err(_) => break,
                     }
-                })?;
+                    Err(_) => break,
+                }
+            })?;
 
         Ok(Self { _id: id, thread: Some(thread), is_idle })
     }
@@ -131,7 +119,11 @@ impl ThreadPool {
     ///
     /// Returns a `PoolCreationError` if `num_threads == 0`, or if any of the
     /// requested threads failed to spawn.
-    pub fn build(num_threads: usize) -> Result<Self, PoolCreationError> {
+    pub fn build(
+        num_threads: usize,
+        priority: Option<thread_priority::ThreadPriority>,
+        names: Option<&[&str]>,
+    ) -> Result<Self, PoolCreationError> {
         if num_threads == 0 {
             return Err(PCE::ZeroThreads);
         }
@@ -143,7 +135,14 @@ impl ThreadPool {
         let queue = Arc::new(AtomicUsize::new(0));
 
         for id in 0..num_threads {
-            match Worker::new(id, Arc::clone(&receiver), Arc::clone(&queue)) {
+            let name = names.map_or("", |s| s[id]);
+            match Worker::new(
+                id,
+                Arc::clone(&receiver),
+                Arc::clone(&queue),
+                priority,
+                name,
+            ) {
                 Ok(worker) => workers.push(worker),
                 Err(e) => return Err(PCE::FailedSpawn(e)),
             }
@@ -176,10 +175,6 @@ impl ThreadPool {
     /// you have provided before continuing.
     pub fn block_until_free(&self) {
         while !self.is_idle() {}
-        // while !self.is_idle() {
-        //     thread::park();
-        // }
-        // thread::current().unpark();
     }
 
     /// Returns whether all of the `ThreadPool`'s worker threads are idle or

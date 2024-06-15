@@ -18,6 +18,7 @@ mod voice;
 use compressor::Compressor;
 pub use effects::*;
 pub use effects::{AudioEffect, StereoEffect};
+use process::MAX_BLOCK_SIZE;
 pub use voice::{VoiceHandler, NUM_VOICES};
 
 pub const MAJ_PENT_SCALE: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
@@ -32,6 +33,7 @@ pub const NUM_CHANNELS: usize = 2;
 /// The app's audio buffer size.
 pub const BUFFER_SIZE: usize = 1 << 9; // 512
 
+const VOICES_PER_HANDLER: usize = NUM_VOICES / NUM_AUDIO_THREADS;
 /// The number of threads used for concurrent audio generation.
 const NUM_AUDIO_THREADS: usize = 8;
 
@@ -66,17 +68,22 @@ impl std::ops::Deref for InstantTime {
 #[derive(Debug)]
 pub struct Audio {
     /// A receiver for income audio note events.
-    note_receiver: Receiver<NoteEvent>,
+    note_receiver: Arc<Receiver<NoteEvent>>,
     /// The sample rate.
     sample_rate: u32,
 
-    /// The audio voice handler.
-    voice_handler: VoiceHandler,
+    /// The audio voice handlers.
+    voice_handlers: Vec<Arc<Mutex<VoiceHandler>>>,
+    /// The audio voice buffers.
+    voice_buffers: Vec<Arc<Mutex<Vec<f32>>>>,
+    /// The buffers which were modified (i.e. written to) for this block.
+    modified_voice_buffers: Vec<Arc<AtomicBool>>,
+    /// The audio voice thread pool.
+    thread_pool: ThreadPool,
 
     callback_timer: Arc<Atomic<InstantTime>>,
 
     voice_counter: Arc<AtomicU32>,
-    thread_pool: ThreadPool,
 
     running: bool,
     compressor: Compressor,
@@ -90,16 +97,54 @@ impl Audio {
         note_receiver: Receiver<NoteEvent>,
         voice_counter: Arc<AtomicU32>,
     ) -> Self {
-        const VOICES_PER_HANDLER: usize = NUM_VOICES / NUM_AUDIO_THREADS;
+        const {
+            assert!(BUFFER_SIZE.is_power_of_two());
+        }
+        const {
+            assert!(NUM_AUDIO_THREADS.is_power_of_two());
+        }
+        const {
+            assert!(NUM_VOICES.is_power_of_two());
+        }
+
         let sr = SAMPLE_RATE as f32;
 
         Self {
-            note_receiver,
+            note_receiver: Arc::new(note_receiver),
             sample_rate: SAMPLE_RATE,
-            voice_handler: VoiceHandler::new::<NUM_VOICES>(sr),
 
-            thread_pool: ThreadPool::build(NUM_AUDIO_THREADS)
-                .expect("failed to allocate audio threads"),
+            voice_handlers: (0..NUM_AUDIO_THREADS)
+                .map(|_| {
+                    Arc::new(Mutex::new(
+                        VoiceHandler::new::<VOICES_PER_HANDLER>(sr),
+                    ))
+                })
+                .collect(),
+
+            voice_buffers: (0..NUM_AUDIO_THREADS)
+                .map(|_| {
+                    Arc::new(Mutex::new(vec![0.0; NUM_CHANNELS * BUFFER_SIZE]))
+                })
+                .collect(),
+
+            modified_voice_buffers: (0..NUM_AUDIO_THREADS)
+                .map(|_| Arc::new(AtomicBool::new(false)))
+                .collect(),
+
+            thread_pool: {
+                let names: Vec<String> = (0..NUM_AUDIO_THREADS)
+                    .map(|i| format!("audio thread #{i}"))
+                    .collect();
+                let name_refs: Vec<&str> =
+                    names.iter().map(String::as_str).collect();
+
+                ThreadPool::build(
+                    NUM_AUDIO_THREADS,
+                    Some(thread_priority::ThreadPriority::Max),
+                    Some(&name_refs),
+                )
+                .expect("failed to allocate audio threads")
+            },
 
             callback_timer: Arc::new(Atomic::new(InstantTime(Instant::now()))),
             voice_counter,
@@ -114,7 +159,7 @@ impl Audio {
     }
 
     /// Returns a reference to the audio note receiver.
-    pub const fn note_receiver(&self) -> &Receiver<NoteEvent> {
+    pub const fn note_receiver(&self) -> &Arc<Receiver<NoteEvent>> {
         &self.note_receiver
     }
 
@@ -130,10 +175,10 @@ impl Audio {
 
     /// Updates the voice counter with the current number of active voices.
     pub fn update_voice_counter(&self) {
-        self.voice_counter.store(
-            self.voice_handler.num_active() as u32,
-            atomic::Ordering::Relaxed,
-        );
+        // self.voice_counter.store(
+        //     self.voice_handler.num_active() as u32,
+        //     atomic::Ordering::Relaxed,
+        // );
     }
 
     /// Converts the `AudioModel` into a CPAL audio stream.
@@ -221,5 +266,124 @@ impl Audio {
     #[inline]
     pub fn db_to_level(db_value: f32) -> f32 {
         10.0f32.powf(db_value / 20.0)
+    }
+}
+
+impl Audio {
+    /// Generates voices based on the incoming audio note events.
+    pub fn process_voices(&mut self, buffer: &mut Buffer) -> bool {
+        let buffer_len = buffer.len_frames();
+
+        for i in 0..NUM_AUDIO_THREADS {
+            // TODO: don't execute the voice generation if it's not needed
+            let receiver = Arc::clone(self.note_receiver());
+            let handler = Arc::clone(&self.voice_handlers[i]);
+            let buffer = Arc::clone(&self.voice_buffers[i]);
+            let flag = Arc::clone(&self.modified_voice_buffers[i]);
+
+            self.thread_pool.execute(move || {
+                let mut next_event = receiver.try_recv().ok();
+
+                let mut handler = handler.lock();
+
+                if next_event.is_none() && !handler.any_active() {
+                    return;
+                }
+
+                let mut block_start = 0;
+                let mut block_end = MAX_BLOCK_SIZE.min(buffer_len);
+
+                // handle polyphonic voices
+                while block_start < buffer_len {
+                    'events: loop {
+                        match next_event {
+                            // if we've snapped the block to an event
+                            Some(event)
+                                if (event.sample_offset() as usize)
+                                    <= block_start =>
+                            {
+                                handler.new_voice(event);
+                                next_event = receiver.try_recv().ok();
+                            }
+                            // if an event is within this block, snap to the
+                            // event
+                            Some(event)
+                                if (event.sample_offset() as usize)
+                                    < block_end =>
+                            {
+                                block_end = event.sample_offset() as usize;
+                                break 'events;
+                            }
+                            // if no new events are available
+                            _ => break 'events,
+                        }
+                    }
+
+                    // TODO(jamiegibney): master gain control?
+                    let mut gain = [0.08; MAX_BLOCK_SIZE];
+
+                    // process voices and clean any which are finished
+                    handler.process_block(
+                        &mut buffer.lock(),
+                        block_start,
+                        block_end,
+                        gain,
+                    );
+                    handler.free_finished_voices();
+
+                    block_start = block_end;
+                    block_end = (block_end + MAX_BLOCK_SIZE).min(buffer_len);
+                }
+
+                flag.store(true, Relaxed);
+
+                drop(handler);
+            });
+        }
+
+        self.thread_pool.block_until_free();
+
+        let mut num_modified = 0;
+
+        // sum modified buffers
+        for (i, flag) in self
+            .modified_voice_buffers
+            .iter()
+            .filter(|f| f.load(Relaxed))
+            .enumerate()
+        {
+            num_modified += 1;
+
+            let mut buf = self.voice_buffers[i].lock();
+            for (i, sample) in buffer.iter_mut().enumerate() {
+                *sample += buf[i];
+            }
+
+            buf.fill(0.0);
+        }
+
+        // dbg!(self.voice_counter.load(Relaxed));
+        // dbg!(num_modified);
+
+        self.voice_counter.store(
+            self.voice_handlers
+                .iter()
+                .map(|h| h.lock().num_active() as u32)
+                .sum(),
+            Relaxed,
+        );
+
+        // dbg!(self.voice_counter.load(Relaxed));
+        // dbg!(num_modified);
+
+        if num_modified == 0 {
+            return false;
+        }
+
+        self.modified_voice_buffers
+            .iter_mut()
+            .for_each(|f| f.store(false, Relaxed));
+
+        true
     }
 }

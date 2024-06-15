@@ -18,7 +18,7 @@ thread-priority = "1.1.0"
 
 [profile.dev]
 debug = "full"
-opt-level = 0
 
 [profile.release]
+# This option is crucial in order to catch any sorting algorithms which may panic.
 panic = "unwind"

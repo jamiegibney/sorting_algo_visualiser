@@ -5,7 +5,7 @@ use sine::SineOsc;
 use tri::TriOsc;
 
 /// The maximum number of polyphonic audio voices.
-pub const NUM_VOICES: usize = 256;
+pub const NUM_VOICES: usize = 512;
 /// The length of each voice's amplitude envelope.
 const ENVELOPE_LENGTH: f32 = 1.0;
 
@@ -48,11 +48,11 @@ pub enum OverrideVoiceBehavior {
     /// Replace the oldest voice.
     ReplaceOldest,
     /// Replace the voice with the lowest frequency.
+    #[default]
     ReplaceLowest,
     /// Replace the voice with the highest frequency.
     ReplaceHighest,
     /// Do not replace any active voices.
-    #[default]
     DoNotReplace,
 }
 
@@ -72,9 +72,6 @@ pub struct VoiceHandler {
 }
 
 impl VoiceHandler {
-    /// An empty voice.
-    const EMPTY_VOICE: Option<Voice> = None;
-
     /// Creates a new `VoiceHandler`.
     pub fn new<const N: usize>(sample_rate: f32) -> Self {
         Self {
@@ -99,7 +96,7 @@ impl VoiceHandler {
     /// Processes a block of audio.
     pub fn process_block(
         &mut self,
-        buffer: &mut Buffer,
+        buffer: &mut [f32],
         block_start: usize,
         block_end: usize,
         gain: [f32; super::process::MAX_BLOCK_SIZE],
@@ -123,7 +120,6 @@ impl VoiceHandler {
     pub fn new_voice(&mut self, event: NoteEvent) {
         #[allow(clippy::enum_glob_use)]
         use OverrideVoiceBehavior::*;
-        // println!("Spawning new voice at frequency {freq} Hz");
 
         if let Some(free_idx) = self.voices.iter().position(Option::is_none) {
             // self.create_voice() is inlined here in case no voices are free
@@ -185,7 +181,7 @@ impl VoiceHandler {
     pub fn free_finished_voices(&mut self) {
         for voice in &mut self.voices {
             match voice {
-                Some(v) if v.is_finished() => *voice = Self::EMPTY_VOICE,
+                Some(v) if v.is_finished() => *voice = None,
                 _ => (),
             }
         }
@@ -193,12 +189,17 @@ impl VoiceHandler {
 
     /// Immediately kills all active voices.
     pub fn kill_active_voices(&mut self) {
-        self.voices.iter_mut().for_each(|v| *v = Self::EMPTY_VOICE);
+        self.voices.iter_mut().for_each(|v| *v = None);
     }
 
     /// Returns `true` if any voice is active.
     pub fn any_active(&self) -> bool {
         self.voices.iter().any(Option::is_some)
+    }
+
+    /// Returns `true` if any voice is free.
+    pub fn any_free(&self) -> bool {
+        self.voices.iter().any(Option::is_none)
     }
 
     /// Returns the number of active voices.

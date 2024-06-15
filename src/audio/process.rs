@@ -2,7 +2,7 @@ use super::*;
 use nannou_audio::Buffer;
 
 /// The maximum block size for audio processing.
-pub const MAX_BLOCK_SIZE: usize = 128;
+pub const MAX_BLOCK_SIZE: usize = 64;
 const BUFFER_TIME: f32 = BUFFER_SIZE as f32 / SAMPLE_RATE as f32;
 
 /// The audio processing callback.
@@ -13,52 +13,11 @@ pub fn process(audio: &mut Audio, buffer: &mut Buffer) {
         return;
     }
 
-    let buffer_len = buffer.len_frames();
-
-    let mut next_event = audio.note_receiver().try_recv().ok();
-
-    let mut block_start = 0;
-    let mut block_end = MAX_BLOCK_SIZE.min(buffer_len);
-
-    // handle polyphonic voices
-    while block_start < buffer_len {
-        'events: loop {
-            match next_event {
-                // if we've snapped the block to an event
-                Some(event)
-                    if (event.sample_offset() as usize) <= block_start =>
-                {
-                    audio.voice_handler.new_voice(event);
-
-                    next_event = audio.note_receiver().try_recv().ok();
-                }
-                // if an event is within this block, snap to the event
-                Some(event) if (event.sample_offset() as usize) < block_end => {
-                    block_end = event.sample_offset() as usize;
-                    break 'events;
-                }
-                // if no new events are available
-                _ => break 'events,
-            }
-        }
-
-        // TODO(jamiegibney): master gain control?
-        let mut gain = [0.08; MAX_BLOCK_SIZE];
-
-        // process voices and clean any which are finished
-        audio
-            .voice_handler
-            .process_block(buffer, block_start, block_end, gain);
-        audio.voice_handler.free_finished_voices();
-
-        block_start = block_end;
-        block_end = (block_end + MAX_BLOCK_SIZE).min(buffer_len);
+    if audio.process_voices(buffer) {
+        process_effects(audio, buffer);
     }
 
-    process_effects(audio, buffer);
     update_callback_timer(audio);
-
-    audio.update_voice_counter();
 
     let elapsed = buf_start.elapsed().as_secs_f32();
     audio.dsp_load.store(elapsed / BUFFER_TIME, Relaxed);
@@ -81,6 +40,6 @@ fn process_effects(audio: &mut Audio, buffer: &mut Buffer) {
         *smp = audio.compressor.tick(ch, *smp);
 
         // TODO: for safety...
-        *smp = (*smp).clamp(-1.0, 1.0);
+        *smp = (*smp * 0.5).clamp(-1.0, 1.0);
     });
 }
