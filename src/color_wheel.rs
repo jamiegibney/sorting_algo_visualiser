@@ -67,6 +67,8 @@ impl ColorWheel {
 
     /// Resizes the color wheel.
     pub fn resize(&mut self, new_resolution: usize) {
+        self.overlay_operations = [].into();
+
         self.vertices = vec![Vec3::ZERO; new_resolution + 1];
         self.indices = (0..new_resolution * 3).collect();
         self.overlay_colors = vec![None; new_resolution];
