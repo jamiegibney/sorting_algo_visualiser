@@ -5,13 +5,13 @@ use nannou_audio::Buffer;
 
 pub mod ballistics_filter;
 pub mod delay;
-pub mod low_pass;
+pub mod filter;
 pub mod ring_buf;
 pub mod verb;
 
 pub use ballistics_filter::BallisticsFilter;
 pub use delay::DelayLine;
-pub use low_pass::Lowpass;
+pub use filter::{Filter, FilterType};
 pub use ring_buf::RingBuffer;
 pub use verb::Reverb;
 

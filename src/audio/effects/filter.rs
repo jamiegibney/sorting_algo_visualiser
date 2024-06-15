@@ -13,9 +13,18 @@ impl Coefs {
     }
 }
 
-/// A first-order lowpass filter.
+#[derive(Debug, Clone, Copy, Default)]
+pub enum FilterType {
+    #[default]
+    Lowpass,
+    Highpass,
+}
+
+/// A first-order filter.
 #[derive(Debug, Clone)]
-pub struct Lowpass {
+pub struct Filter {
+    filter_type: FilterType,
+
     coefs: Coefs,
     z1: f32,
 
@@ -24,10 +33,16 @@ pub struct Lowpass {
     sample_rate: f32,
 }
 
-impl Lowpass {
+impl Filter {
     /// Creates a new `Lowpass` filter.
-    pub const fn new(sample_rate: f32) -> Self {
-        Self { coefs: Coefs::identity(), z1: 0.0, freq: 0.0, sample_rate }
+    pub fn new(sample_rate: f32) -> Self {
+        Self {
+            filter_type: FilterType::default(),
+            coefs: Coefs::identity(),
+            z1: 0.0,
+            freq: 0.0,
+            sample_rate,
+        }
     }
 
     /// Provides a frequency to the filter.
@@ -38,6 +53,12 @@ impl Lowpass {
     /// is negative.
     pub fn with_freq(mut self, freq: f32) -> Self {
         self.set_freq(freq);
+        self
+    }
+
+    /// Provides a `FilterType` to the filter.
+    pub fn with_type(mut self, filter_type: FilterType) -> Self {
+        self.set_type(filter_type);
         self
     }
 
@@ -62,20 +83,26 @@ impl Lowpass {
         self.freq = freq;
     }
 
+    /// Sets the type of the filter.
+    pub fn set_type(&mut self, filter_type: FilterType) {
+        self.filter_type = filter_type;
+    }
+
     fn set_coefs(&mut self) {
         let Self { freq: w, sample_rate: sr, .. } = *self;
+        let is_lowpass = matches!(self.filter_type, FilterType::Lowpass);
         let (phi_sin, phi_cos) = ((TAU * w) / sr).sin_cos();
 
         let b1 = (-phi_cos) / (1.0 + phi_sin);
-        let a0 = (1.0 + b1) * 0.5;
+        let a0 = (1.0 + if is_lowpass { b1 } else { -b1 }) * 0.5;
 
         self.coefs.b1 = b1;
         self.coefs.a0 = a0;
-        self.coefs.a1 = a0;
+        self.coefs.a1 = if is_lowpass { a0 } else { -a0 };
     }
 }
 
-impl AudioEffect for Lowpass {
+impl AudioEffect for Filter {
     fn tick(&mut self, channel: usize, sample: f32) -> f32 {
         let Coefs { a0, a1, b1 } = self.coefs;
 
