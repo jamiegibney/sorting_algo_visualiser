@@ -190,6 +190,7 @@ impl SortArray {
     pub fn resize(&mut self, new_size: usize) {
         self.arr = (0..new_size).collect();
         self.initial_arr = (0..new_size).collect();
+        self.op_buffer.clear();
     }
 
     /// Force-sorts the array.
