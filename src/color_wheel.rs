@@ -174,7 +174,8 @@ impl Updatable for ColorWheel {
 
 impl Drawable for ColorWheel {
     fn draw(&self, draw: &Draw, update: UpdateData) {
-        draw.mesh()
+        draw.translate(vec3(0.0, 50.0, 0.0))
+            .mesh()
             .indexed_colored(
                 (0..self.resolution() * 3).map(|i| {
                     let color_idx = self.color_indices[i / 3];
