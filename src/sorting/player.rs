@@ -184,6 +184,9 @@ impl Player {
 
         // This will not panic, as we know capture is Some
         let len_f = self.capture.as_ref().unwrap().len() as f32;
+
+        assert!(len_f > f32::EPSILON, "invalid length");
+
         let ops_last_frame = Arc::clone(&self.ops_last_frame);
         let event_sender = Arc::clone(&self.audio.note_event_sender);
         let callback_timer = Arc::clone(&self.audio.callback_timer);
@@ -194,10 +197,19 @@ impl Player {
 
         self.audio_msg_thread.execute(move || {
             let map = |x: f32| (x * 2.0 - 1.0).clamp(-1.0, 1.0) * 0.5;
+            let timing = || {
+                let samples_exact =
+                    callback_timer.load(Relaxed).elapsed().as_secs_f32()
+                        * SAMPLE_RATE as f32;
+
+                samples_exact.round() as u32 % BUFFER_SIZE as u32
+            };
 
             for &op in ops_last_frame.iter().take(audio_ops_this_frame) {
                 let (mut freq, mut amp, mut pan) = (0.5, 1.0, 0.0);
                 let mut osc = OscillatorType::default();
+
+                let mut second_event = None;
 
                 match op {
                     SortOperation::Write { idx, .. } => {
@@ -216,38 +228,66 @@ impl Player {
                     SortOperation::Swap { a, b } => {
                         let a_f = a as f32 / len_f;
                         let b_f = b as f32 / len_f;
-                        freq = (a_f + b_f) * 0.25;
+
+                        freq = a_f * 0.5;
+                        let freq_2 = b_f * 0.5;
+
                         amp = 0.7;
-                        pan = (a_f + b_f) * 0.5;
+
+                        pan = a_f;
+                        let pan_2 = b_f;
+
+                        second_event = Some(NoteEvent {
+                            osc,
+                            freq: Self::map_freq(freq_2),
+                            amp,
+                            timing: timing(),
+                            pan: map(pan_2 + random_range(-0.5, 0.5)),
+                        });
                     }
                     SortOperation::Compare { a, b, .. } => {
                         let a_f = a as f32 / len_f;
                         let b_f = b as f32 / len_f;
-                        freq = (a_f + b_f) * 0.5;
+
+                        freq = a_f;
+                        let freq_2 = b_f;
+
                         amp = 0.4;
-                        pan = freq;
+
+                        pan = a_f;
+                        let pan_2 = b_f;
+
                         osc = OscillatorType::Tri;
+
+                        second_event = Some(NoteEvent {
+                            osc,
+                            freq: Self::map_freq(freq_2),
+                            amp,
+                            timing: timing(),
+                            pan: map(pan_2 + random_range(-0.5, 0.5)),
+                        });
                     }
                 }
 
                 thread::sleep(Duration::from_secs_f32(time_between));
-
-                let samples_exact =
-                    callback_timer.load(Relaxed).elapsed().as_secs_f32()
-                        * SAMPLE_RATE as f32;
 
                 if event_sender
                     .try_send(NoteEvent {
                         osc,
                         freq: Self::map_freq(freq),
                         amp,
-                        timing: samples_exact.round() as u32
-                            % BUFFER_SIZE as u32,
+                        timing: timing(),
                         pan: map(pan + random_range(-0.5, 0.5)),
                     })
                     .is_err()
                 {
                     break;
+                }
+
+                if let Some(event) = second_event {
+                    if event_sender.try_send(event).is_err() {
+                        break;
+                    }
                 }
             }
         });
