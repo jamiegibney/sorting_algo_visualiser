@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use crate::thread_pool::ThreadPool;
-use std::{os::unix::fs::DirBuilderExt, rc::Rc, thread, time::Duration};
+use std::{rc::Rc, thread, time::Duration};
 
-const MAX_AUDIO_NOTES_PER_SECOND: usize = 3000;
+const MAX_AUDIO_NOTES_PER_SECOND: usize = 20000;
 
 #[derive(Debug)]
 struct AudioState {
@@ -73,6 +73,11 @@ impl Player {
     /// Whether the player currently has a capture loaded.
     pub const fn has_capture(&self) -> bool {
         self.capture.is_some()
+    }
+
+    /// Clears the operations captured in the last frame.
+    pub fn clear_ops(&mut self) {
+        self.ops_last_frame = [].into();
     }
 
     /// The time it takes for the player to complete the array playback from
@@ -183,6 +188,10 @@ impl Player {
         let event_sender = Arc::clone(&self.audio.note_event_sender);
         let callback_timer = Arc::clone(&self.audio.callback_timer);
 
+        if event_sender.is_full() {
+            return;
+        }
+
         self.audio_msg_thread.execute(move || {
             let map = |x: f32| (x * 2.0 - 1.0).clamp(-1.0, 1.0) * 0.5;
 
@@ -227,13 +236,19 @@ impl Player {
                     callback_timer.load(Relaxed).elapsed().as_secs_f32()
                         * SAMPLE_RATE as f32;
 
-                _ = event_sender.try_send(NoteEvent {
-                    osc,
-                    freq: Self::map_freq(freq),
-                    amp,
-                    timing: samples_exact.round() as u32 % BUFFER_SIZE as u32,
-                    pan: map(pan + random_range(-0.5, 0.5)),
-                });
+                if event_sender
+                    .try_send(NoteEvent {
+                        osc,
+                        freq: Self::map_freq(freq),
+                        amp,
+                        timing: samples_exact.round() as u32
+                            % BUFFER_SIZE as u32,
+                        pan: map(pan + random_range(-0.5, 0.5)),
+                    })
+                    .is_err()
+                {
+                    break;
+                }
             }
         });
     }
