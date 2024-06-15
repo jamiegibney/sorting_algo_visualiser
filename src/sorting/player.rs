@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::thread_pool::ThreadPool;
 use std::{os::unix::fs::DirBuilderExt, rc::Rc, thread, time::Duration};
 
-const MAX_AUDIO_NOTES_PER_SECOND: usize = 5000;
+const MAX_AUDIO_NOTES_PER_SECOND: usize = 3000;
 
 #[derive(Debug)]
 struct AudioState {
@@ -49,8 +49,12 @@ impl Player {
 
             ops_last_frame: [].into(),
 
-            audio_msg_thread: ThreadPool::build(1)
-                .expect("failed to allocate audio msg thread"),
+            audio_msg_thread: ThreadPool::build(
+                2,
+                None,
+                Some(&["audio messaging #0", "audio messaging #1"]),
+            )
+            .expect("failed to allocate audio msg thread"),
         }
     }
 
@@ -169,7 +173,9 @@ impl Player {
     fn send_note_events(&self, delta_time: f32) {
         let audio_ops_this_frame =
             (MAX_AUDIO_NOTES_PER_SECOND as f32 * delta_time) as usize;
-        let time_between = delta_time / (audio_ops_this_frame as f32) * 0.8;
+        let time_between = delta_time
+            / (self.ops_last_frame.len().min(audio_ops_this_frame) as f32)
+            * 0.1;
 
         // This will not panic, as we know capture is Some
         let len_f = self.capture.as_ref().unwrap().len() as f32;
@@ -290,6 +296,8 @@ impl Updatable for Player {
         self.ops_last_frame =
             cap.set_progress(curr_progress + progress_per_frame);
 
-        self.send_note_events(update.delta_time);
+        if !self.ops_last_frame.is_empty() {
+            self.send_note_events(update.delta_time);
+        }
     }
 }
