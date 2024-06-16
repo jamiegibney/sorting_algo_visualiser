@@ -66,7 +66,7 @@ impl Worker {
         let is_idle_ref = Arc::clone(&is_idle);
 
         let thread = builder
-            .name(format!("thread \"{name}\" (pool id {id})"))
+            .name(format!("thread `{name}` (pool id {id})"))
             .spawn(move || loop {
                 if let Some(priority) = priority {
                     thread_priority::set_current_thread_priority(priority);
