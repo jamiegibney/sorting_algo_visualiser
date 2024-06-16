@@ -1,5 +1,10 @@
 #![allow(unused, clippy::wildcard_imports)]
 
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 use nannou::prelude::*;
 
 mod algorithms;
