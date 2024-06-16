@@ -91,7 +91,8 @@ pub struct Audio {
 
     running: bool,
     compressor: Compressor,
-    filter: StereoEffect<Filter>,
+    lp: StereoEffect<Filter>,
+    hp: StereoEffect<Filter>,
     dsp_load: Arc<Atomic<f32>>,
 }
 
@@ -159,10 +160,15 @@ impl Audio {
                 .with_threshold_db(-18.0)
                 .with_ratio(100.0)
                 .with_knee_width(12.0),
-            filter: StereoEffect::splat(
+            lp: StereoEffect::splat(
+                Filter::new(sr)
+                    .with_type(FilterType::Lowpass)
+                    .with_freq(4000.0),
+            ),
+            hp: StereoEffect::splat(
                 Filter::new(sr)
                     .with_type(FilterType::Highpass)
-                    .with_freq(8000.0),
+                    .with_freq(300.0),
             ),
             dsp_load: Arc::new(Atomic::new(0.0)),
         }

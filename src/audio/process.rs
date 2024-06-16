@@ -34,7 +34,8 @@ fn update_callback_timer(audio: &Audio) {
 /// Processes any audio effects.
 fn process_effects(audio: &mut Audio, buffer: &mut Buffer) {
     Audio::process_buffer(buffer, |ch, smp| {
-        *smp = audio.filter.tick(ch, *smp);
+        *smp = audio.hp.tick(ch, *smp);
+        // *smp = audio.lp.tick(ch, *smp);
         *smp = audio.compressor.tick(ch, *smp);
 
         // TODO: for safety...
