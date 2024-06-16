@@ -1,4 +1,5 @@
 #![allow(unused, clippy::wildcard_imports)]
+#![feature(portable_simd)]
 
 use mimalloc::MiMalloc;
 

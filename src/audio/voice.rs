@@ -1,8 +1,8 @@
 use super::*;
 use envelope::AmpEnvelope;
 use nannou_audio::Buffer;
-use sine::SineOsc;
-use tri::TriOsc;
+use sine::{SineOsc, SineOscSimd};
+use tri::{TriOsc, TriOscSimd};
 
 /// The maximum number of polyphonic audio voices.
 pub const NUM_VOICES: usize = 2048;
@@ -14,14 +14,57 @@ const ENVELOPE_LENGTH: f32 = 1.0;
 struct Voice {
     id: u64,
     sample_rate: f32,
-    osc: Box<dyn Oscillator + Send>,
+    // osc: Box<dyn Oscillator + Send>,
+    osc: Box<dyn SimdOscillator + Send>,
+
+    data: f32x64,
+    read_pos: usize,
+
     freq: f32,
     envelope: AmpEnvelope,
-    amp: f32,
-    pan: f32,
+    amp: f32x64,
+    pan: (f32, f32),
 }
 
 impl Voice {
+    pub fn new(
+        event: NoteEvent,
+        id: u64,
+        sr: f32,
+        envelope_data: &[u8],
+    ) -> Self {
+        let mut s = Self {
+            id,
+            sample_rate: sr,
+            osc: match event.osc() {
+                _ => {
+                    Box::new(SineOscSimd::new(event.freq(), sr))
+                        as Box<dyn SimdOscillator + Send>
+                }
+                // OscillatorType::Tri => {
+                //     Box::new(TriOscSimd::new(event.freq(), sr))
+                //         as Box<dyn SimdOscillator + Send>
+                // }
+            },
+            data: f32x64::splat(0.0),
+            read_pos: 0,
+            freq: event.freq(),
+            amp: f32x64::splat(event.amp()),
+            envelope: AmpEnvelope::new(envelope_data),
+            pan: {
+                let pan = (event.pan() + 1.0) * 0.5;
+                let left = pan;
+                let right = 1.0 - pan;
+
+                (left, right)
+            },
+        };
+
+        s.compute();
+
+        s
+    }
+
     /// Sets the frequency of the voice.
     pub fn set_frequency(&mut self, new_freq: f32) {
         self.freq = new_freq;
@@ -33,12 +76,22 @@ impl Voice {
         !self.envelope.is_active()
     }
 
-    pub fn balance(&self) -> (f32, f32) {
-        let pan = (self.pan + 1.0) * 0.5;
-        let left = pan;
-        let right = 1.0 - pan;
+    pub fn next(&mut self) -> (f32, f32) {
+        let out = self.data.as_array()[self.read_pos];
 
-        (left, right)
+        self.read_pos += 1;
+
+        if self.read_pos == 64 {
+            self.compute();
+            self.read_pos = 0;
+        }
+
+        (out * self.pan.0, out * self.pan.1)
+    }
+
+    fn compute(&mut self) {
+        self.data = self.osc.tick() * self.amp * self.envelope.next_simd();
+        // println!("data for voice #{}: {:?}\n\n", self.id, self.data);
     }
 }
 
@@ -105,13 +158,10 @@ impl VoiceHandler {
 
         for voice in self.voices.iter_mut().flatten() {
             for (i, sample) in (block_start..block_end).enumerate() {
-                let voice_amp =
-                    voice.envelope.next().unwrap_or(0.0) * voice.amp;
-                let out = voice.osc.tick() * voice_amp * gain[i];
-                let (l, r) = voice.balance();
+                let (l, r) = voice.next();
 
-                buffer[sample * 2] += out * l;
-                buffer[sample * 2 + 1] += out * r;
+                buffer[sample * 2] += l * gain[i];
+                buffer[sample * 2 + 1] += r * gain[i];
             }
         }
     }
@@ -209,24 +259,12 @@ impl VoiceHandler {
 
     /// Returns a new voice.
     fn create_voice(&mut self, event: NoteEvent) -> Voice {
-        Voice {
-            id: self.next_voice_id(),
-            sample_rate: self.sample_rate,
-            osc: match event.osc() {
-                OscillatorType::Sine => {
-                    Box::new(SineOsc::new(event.freq(), self.sample_rate))
-                        as Box<dyn Oscillator + Send>
-                }
-                OscillatorType::Tri => {
-                    Box::new(TriOsc::new(event.freq(), self.sample_rate))
-                        as Box<dyn Oscillator + Send>
-                }
-            },
-            freq: event.freq(),
-            amp: event.amp(),
-            envelope: AmpEnvelope::new(&self.envelope_data),
-            pan: event.pan(),
-        }
+        Voice::new(
+            event,
+            self.next_voice_id(),
+            self.sample_rate,
+            &self.envelope_data,
+        )
     }
 
     /// Gets the next voice ID.

@@ -52,6 +52,12 @@ pub trait Oscillator: std::fmt::Debug {
     fn tick(&mut self) -> f32;
 }
 
+/// Trait for SIMD oscillators.
+pub trait SimdOscillator: std::fmt::Debug {
+    fn set_frequency(&mut self, freq_hz: f32, sample_rate: f32);
+    fn tick(&mut self) -> f32x64;
+}
+
 /// An atomic-compatible wrapper around an `Instant`.
 #[derive(Debug, Clone, Copy)]
 pub struct InstantTime(Instant);
