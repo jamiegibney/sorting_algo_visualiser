@@ -34,7 +34,7 @@ pub struct Filter {
 }
 
 impl Filter {
-    /// Creates a new `Lowpass` filter.
+    /// Creates a new filter.
     pub fn new(sample_rate: f32) -> Self {
         Self {
             filter_type: FilterType::default(),
@@ -81,6 +81,7 @@ impl Filter {
         );
 
         self.freq = freq;
+        self.set_coefs();
     }
 
     /// Sets the type of the filter.
