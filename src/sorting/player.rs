@@ -175,6 +175,7 @@ impl Player {
         Arc::clone(&self.ops_last_frame)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn send_note_events(&self, delta_time: f32) {
         let audio_ops_this_frame =
             (MAX_AUDIO_NOTES_PER_SECOND as f32 * delta_time) as usize;
@@ -183,7 +184,9 @@ impl Player {
             * 0.1;
 
         // This will not panic, as we know capture is Some
-        let len_f = self.capture.as_ref().unwrap().len() as f32;
+        let cap = self.capture.as_ref().unwrap();
+        let len_f = cap.len() as f32;
+        let curr = cap.algorithm();
 
         assert!(len_f > f32::EPSILON, "invalid length");
 
@@ -208,7 +211,6 @@ impl Player {
             for &op in ops_last_frame.iter().take(audio_ops_this_frame) {
                 let (mut freq, mut amp, mut pan) = (0.5, 1.0, 0.0);
                 let mut osc = OscillatorType::default();
-
                 let mut second_event = None;
 
                 match op {
@@ -229,11 +231,17 @@ impl Player {
                         let a_f = a as f32 / len_f;
                         let b_f = b as f32 / len_f;
 
-                        freq = a_f * 0.5;
-                        let freq_2 = b_f * 0.5;
+                        let freq_mult =
+                            if matches!(curr, SortingAlgorithm::Shuffle) {
+                                0.5
+                            }
+                            else {
+                                1.0
+                            };
 
+                        freq = a_f * freq_mult;
+                        let freq_2 = b_f * freq_mult;
                         amp = 0.7;
-
                         pan = a_f;
                         let pan_2 = b_f;
 
@@ -248,15 +256,11 @@ impl Player {
                     SortOperation::Compare { a, b, .. } => {
                         let a_f = a as f32 / len_f;
                         let b_f = b as f32 / len_f;
-
-                        freq = a_f;
-                        let freq_2 = b_f;
-
+                        freq = a_f * 0.5;
+                        let freq_2 = b_f * 0.5;
                         amp = 0.4;
-
                         pan = a_f;
                         let pan_2 = b_f;
-
                         osc = OscillatorType::Tri;
 
                         second_event = Some(NoteEvent {
@@ -283,7 +287,6 @@ impl Player {
                 {
                     break;
                 }
-
                 if let Some(event) = second_event {
                     if event_sender.try_send(event).is_err() {
                         break;
