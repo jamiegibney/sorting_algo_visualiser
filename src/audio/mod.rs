@@ -283,35 +283,11 @@ impl Audio {
             Relaxed,
         );
     }
-
-    fn add_modified_to_buffer(&self, buffer: &mut Buffer) {
-        // println!("\nsumming buffers...");
-
-        for (i, flag) in self
-            .modified_buffers
-            .iter()
-            .filter(|f| f.load(Relaxed))
-            .enumerate()
-        {
-            // println!("main thread trying to lock buffer {i}");
-            let mut buf = self.voice_buffers[i].lock();
-            // println!("main thread acquired lock on buffer {i}");
-            for (i, sample) in buffer.iter_mut().enumerate() {
-                *sample += buf[i];
-            }
-
-            // reset the flag and the buffer for the next frame
-            flag.store(false, Relaxed);
-            buf.fill(0.0);
-            // println!("main thread dropped buffer {i}");
-        }
-    }
 }
 
 impl Audio {
     /// Generates voices based on the incoming audio note events.
     pub fn process_voices(&mut self, buffer: &mut Buffer) -> bool {
-        // println!("processing voices...");
         for (i, buf) in self.voice_buffers.iter().enumerate() {
             assert!(
                 !buf.is_locked(),
@@ -319,15 +295,30 @@ impl Audio {
             );
         }
 
-        // println!("\t\tstarting threads...");
         let any_executed = self.thread_pool.execute();
 
-        // println!("\t\tthreads done, summing buffers...");
         self.add_modified_to_buffer(buffer);
-        // println!("\t\tbuffers summed");
-
         self.update_voice_counter();
 
         any_executed
+    }
+
+    fn add_modified_to_buffer(&self, buffer: &mut Buffer) {
+        for (i, flag) in self
+            .modified_buffers
+            .iter()
+            .filter(|f| f.load(Relaxed))
+            .enumerate()
+        {
+            let mut buf = self.voice_buffers[i].lock();
+            for (i, sample) in buffer.iter_mut().enumerate() {
+                *sample += buf[i];
+            }
+            drop(buf);
+
+            // reset the flag and the buffer for the next frame
+            flag.store(false, Relaxed);
+            // buf.fill(0.0);
+        }
     }
 }

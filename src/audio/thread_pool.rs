@@ -69,7 +69,6 @@ impl Worker {
 
                     'process: {
                         let mut next_event = data.note_receiver.try_recv().ok();
-                        // println!("thread {id} trying to lock buffer");
                         let mut buf = data
                             .output_buffer
                             .try_lock()
@@ -78,12 +77,12 @@ impl Worker {
                                     "failed to lock output buffer for thread {id}"
                                 )
                             });
-                        // println!("thread {id} acquired lock on buffer");
 
                         let buffer_len = buf.len() / NUM_CHANNELS;
+                        buf.fill(0.0);
 
+                        // TODO: could this be implemented?
                         // if next_event.is_none() && !handler.any_active() {
-                        //     println!("no work to do for thread {id}");
                         //     break 'process;
                         // }
 
