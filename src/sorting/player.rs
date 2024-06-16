@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::thread_pool::ThreadPool;
 use std::{rc::Rc, thread, time::Duration};
 
-const MAX_AUDIO_NOTES_PER_SECOND: usize = 20000;
+const MAX_AUDIO_NOTES_PER_SECOND: usize = 40000;
 
 #[derive(Debug)]
 struct AudioState {
