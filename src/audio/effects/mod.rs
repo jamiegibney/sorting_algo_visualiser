@@ -4,16 +4,10 @@ use super::*;
 use nannou_audio::Buffer;
 
 pub mod ballistics_filter;
-pub mod delay;
 pub mod filter;
-pub mod ring_buf;
-pub mod verb;
 
 pub use ballistics_filter::BallisticsFilter;
-pub use delay::DelayLine;
 pub use filter::{Filter, FilterType};
-pub use ring_buf::RingBuffer;
-pub use verb::Reverb;
 
 /// Trait for SIMD audio processing effects, which *only* support two channels.
 pub trait SimdAudioEffect: Debug + Clone {

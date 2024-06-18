@@ -1,5 +1,7 @@
 use super::*;
 
+/// A stereo ballistics filter used for envelope following, which uses a
+/// two-lane SIMD type for stereo processing.
 #[derive(Debug, Clone)]
 pub struct BallisticsFilter {
     /// A buffer for storing the last set of output samples.
