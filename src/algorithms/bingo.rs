@@ -8,44 +8,48 @@ impl Bingo {
         Self
     }
 
-    fn min_max_indices(arr: &mut SortArray) -> (usize, usize) {
+    fn min_max(arr: &mut SortArray) -> (usize, usize) {
         let mut min_idx = 0;
+        let mut min = 0;
         let mut max_idx = 0;
+        let mut max = 0;
+
         for i in 0..arr.len() {
             if arr.cmp(i, min_idx, Less) {
                 min_idx = i;
+                min = arr.read(min_idx);
             }
             if arr.cmp(i, max_idx, Greater) {
                 max_idx = i;
+                max = arr.read(max_idx);
             }
         }
 
-        (min_idx, max_idx)
+        (min, max)
     }
 }
 
 impl SortProcessor for Bingo {
     fn process(&mut self, arr: &mut SortArray) {
-        unimplemented!();
-        let (mut bingo, mut next_bingo) = Self::min_max_indices(arr);
+        let (mut bingo, mut next_bingo) = Self::min_max(arr);
+        let max = next_bingo;
         let mut next_pos = 0;
-        let max_idx = next_bingo;
 
-        while arr.cmp(bingo, next_bingo, Less) {
+        while bingo < next_bingo {
             let mut start = next_pos;
 
             for i in start..arr.len() {
-                if arr.cmp(i, bingo, Equal) {
+                if arr.read(i) == bingo {
                     arr.swap(i, next_pos);
                     next_pos += 1;
                 }
-                else if arr.cmp(i, next_bingo, Less) {
-                    next_bingo = i;
+                else if arr.read(i) < next_bingo {
+                    next_bingo = arr.read(i);
                 }
             }
 
             bingo = next_bingo;
-            next_bingo = max_idx;
+            next_bingo = max;
         }
     }
 }
