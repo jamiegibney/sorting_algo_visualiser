@@ -14,6 +14,7 @@ pub struct UiData {
     pub dsp_load: f32,
     pub sorted: bool,
     pub computing: bool,
+    pub shuffling: bool,
 }
 
 #[derive(Debug)]
@@ -37,6 +38,7 @@ impl Ui {
             dsp_load,
             sorted,
             computing,
+            shuffling,
         } = ui_data;
 
         let info = if computing {
@@ -50,7 +52,15 @@ impl Ui {
             )
         })
         };
-        let algo = format!("Algorithm: {algorithm}",);
+        let algo = format!(
+            "Algorithm: {}",
+            if shuffling {
+                String::from("Shuffling...")
+            }
+            else {
+                algorithm.to_string()
+            }
+        );
         let res = format!("{resolution} segments");
         let sorted = format!("Sorted: {}", if sorted { "yes" } else { "no" });
         let speed = format!(

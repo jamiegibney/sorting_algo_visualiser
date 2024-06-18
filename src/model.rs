@@ -31,8 +31,11 @@ pub struct Model {
     sorted: bool,
     resolution: usize,
 
+    is_shuffling: bool,
     computing: Arc<AtomicBool>,
     auto_play_ch: (Arc<Sender<()>>, Receiver<()>),
+
+    sort_after_shuffle: bool,
 
     update_data: UpdateData,
 }
@@ -86,6 +89,9 @@ impl Model {
 
             computing: Arc::new(AtomicBool::new(false)),
             auto_play_ch: (Arc::new(ap_tx), ap_rx),
+
+            sort_after_shuffle: false,
+            is_shuffling: false,
 
             update_data: UpdateData {
                 last_frame: Instant::now(),
@@ -151,9 +157,21 @@ impl Model {
             self.update_data.last_frame.elapsed().as_secs_f32();
 
         let mut player = self.player.lock();
+        let computing = self.computing.load(Relaxed);
 
         if self.auto_play_ch.1.try_recv().is_ok() {
             player.play();
+        }
+
+        if !computing && !player.is_playing() {
+            if self.sort_after_shuffle {
+                self.compute();
+                self.sort_after_shuffle = false;
+            }
+
+            if self.is_shuffling {
+                self.is_shuffling = false;
+            }
         }
 
         player.update(app, self.update_data);
@@ -171,7 +189,8 @@ impl Model {
             num_voices: self.audio_voice_counter.load(Relaxed),
             dsp_load: self.dsp_load.load(Relaxed),
             sorted: player.is_sorted(),
-            computing: self.computing.load(Relaxed),
+            computing,
+            shuffling: self.is_shuffling,
         });
 
         drop(player);
@@ -243,6 +262,8 @@ impl Model {
                 .swap(SortingAlgorithm::Shuffle, Relaxed),
         );
 
+        self.is_shuffling = true;
+
         self.compute();
     }
 
@@ -302,6 +323,11 @@ impl Model {
             println!("Muted audio");
         }
     }
+
+    pub fn shuffle_and_sort(&mut self) {
+        self.shuffle();
+        self.sort_after_shuffle = true;
+    }
 }
 
 /// The callback for key-down presses.
@@ -348,6 +374,10 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         }
         Key::M => {
             model.toggle_audio_processing();
+        }
+        Key::N => {
+            model.next_algorithm();
+            model.shuffle_and_sort();
         }
         _ => {}
     }

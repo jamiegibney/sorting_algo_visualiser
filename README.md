@@ -15,7 +15,6 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 #### Refactors
 - [x] Prevent sending audio generation task to thread pool if it's not needed (the challenge is *how* to know when it's not needed).
 - [ ] Separate the sorting array to a separate type, which is held by a "manager" which offers methods like prepare, capture dumping, resizing etc. This prevents sorting algorithms from modifying the actual array beyond the usual sorting operations.
-- [ ] Documentation for more of the core API
 - [ ] Better names for certain types/functions
 - [ ] Manage which audio threads receive which incoming events more intelligently.
 - [ ] Further optimise audio processing (SIMD?) to increase max voice count.
@@ -25,6 +24,7 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 - [x] Parallelise the audio processing, so multiple threads can generate groups of voices and then sum the result on the main audio thread.
 - [x] Allow user to mute audio
 - [x] Swap/comparison operations should post note events for both array positions, rather than an average.
+- [ ] Add the ability for an "auto" command where the array is shuffled, the next algorithm is selected, and then the array is sorted with that algorithm.
 - [ ] Add certain array size restrictions for particular algorithms (such as bogo or stooge sort)
 - [ ] Add sorting algorithms
     - [ ] Bucket sort
