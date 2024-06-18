@@ -18,7 +18,7 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 - [ ] Better names for certain types/functions
 - [ ] Manage which audio threads receive which incoming events more intelligently.
 - [ ] Further optimise audio processing (SIMD?) to increase max voice count.
-- [ ] Add a more efficient blocking method to the thread pools.
+- [ ] Add a more efficient blocking method to the thread pools (e.g. spin-lock).
 
 #### Features
 - [x] Parallelise the audio processing, so multiple threads can generate groups of voices and then sum the result on the main audio thread.
