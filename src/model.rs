@@ -53,7 +53,8 @@ impl Model {
             .expect("failed to initialize main window");
 
         let color_wheel = ColorWheel::new();
-        let (note_tx, note_rx) = bounded(256);
+        let (note_tx, note_rx) =
+            bounded(if cfg!(debug_assertions) { 200 } else { 512 });
 
         let audio_voice_counter = Arc::new(AtomicU32::new(0));
 
@@ -61,7 +62,7 @@ impl Model {
         let audio_callback_timer = Arc::clone(audio_model.callback_timer());
         let dsp_load = Arc::clone(audio_model.dsp_load());
 
-        let (ap_tx, ap_rx) = bounded(1);
+        let (ap_tx, ap_rx) = bounded(0);
 
         let algo = Arc::new(Atomic::new(SortingAlgorithm::default()));
 
@@ -347,10 +348,7 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         // "recompute"
         Key::R => model.compute(),
         // "shuffle"
-        Key::S => {
-            // println!("shuffling");
-            model.shuffle();
-        }
+        Key::S => model.shuffle(),
         Key::Return => {
             if app.keys.mods.shift() {
                 model.previous_algorithm();
@@ -368,13 +366,8 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         // decrease speed
         Key::Comma => model.decrease_speed(),
         // "force-sort"
-        Key::F => {
-            // println!("Forcing-sorting the wheel...");
-            model.force_sort();
-        }
-        Key::M => {
-            model.toggle_audio_processing();
-        }
+        Key::F => model.force_sort(),
+        Key::M => model.toggle_audio_processing(),
         Key::N => {
             model.next_algorithm();
             model.shuffle_and_sort();

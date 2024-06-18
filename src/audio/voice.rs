@@ -5,9 +5,7 @@ use sine::{SineOsc, SineOscSimd};
 use tri::{TriOsc, TriOscSimd};
 
 /// The maximum number of polyphonic audio voices.
-pub const NUM_VOICES: usize = 2048;
-/// The length of each voice's amplitude envelope.
-const ENVELOPE_LENGTH: f32 = 1.0;
+pub const NUM_VOICES: usize = if cfg!(debug_assertions) { 512 } else { 2048 };
 
 /// A single voice.
 #[derive(Debug)]
