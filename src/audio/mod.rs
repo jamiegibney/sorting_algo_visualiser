@@ -106,8 +106,8 @@ pub struct Audio {
 
     running: bool,
     compressor: Compressor,
-    lp: FilterSimd,
-    hp: FilterSimd,
+    lp: Filter,
+    hp: Filter,
     dsp_load: Arc<Atomic<f32>>,
 }
 
@@ -177,10 +177,10 @@ impl Audio {
                 .with_threshold_db(-18.0)
                 .with_ratio(100.0)
                 .with_knee_width(12.0),
-            lp: FilterSimd::new(sr)
+            lp: Filter::new(sr)
                 .with_type(FilterType::Lowpass)
                 .with_freq(4000.0),
-            hp: FilterSimd::new(sr)
+            hp: Filter::new(sr)
                 .with_type(FilterType::Highpass)
                 .with_freq(300.0),
             dsp_load: Arc::new(Atomic::new(0.0)),

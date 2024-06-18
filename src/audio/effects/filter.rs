@@ -1,15 +1,16 @@
 use super::*;
 
 #[derive(Debug, Clone)]
-struct Coefs {
-    a0: f32,
-    a1: f32,
-    b1: f32,
+struct CoefsSimd {
+    a0: f32x2,
+    a1: f32x2,
+    b1: f32x2,
 }
 
-impl Coefs {
+impl CoefsSimd {
     const fn identity() -> Self {
-        Self { a0: 1.0, a1: 0.0, b1: 0.0 }
+        let simd_0 = f32x2::from_array([0.0, 0.0]);
+        Self { a0: f32x2::from_array([1.0, 1.0]), a1: simd_0, b1: simd_0 }
     }
 }
 
@@ -20,17 +21,17 @@ pub enum FilterType {
     Highpass,
 }
 
-/// A first-order filter.
+/// A first-order filter using a two-lane SIMD type for stereo processing.
 #[derive(Debug, Clone)]
 pub struct Filter {
     filter_type: FilterType,
 
-    coefs: Coefs,
-    z1: f32,
+    coefs: CoefsSimd,
+    z1: f32x2,
 
-    freq: f32,
+    freq: f32x2,
 
-    sample_rate: f32,
+    sample_rate: f32x2,
 }
 
 impl Filter {
@@ -38,10 +39,10 @@ impl Filter {
     pub fn new(sample_rate: f32) -> Self {
         Self {
             filter_type: FilterType::default(),
-            coefs: Coefs::identity(),
-            z1: 0.0,
-            freq: 0.0,
-            sample_rate,
+            coefs: CoefsSimd::identity(),
+            z1: f32x2::splat(0.0),
+            freq: f32x2::splat(0.0),
+            sample_rate: f32x2::splat(sample_rate),
         }
     }
 
@@ -64,9 +65,12 @@ impl Filter {
 
     /// Resets the filter, including its frequency.
     pub fn reset(&mut self) {
-        self.coefs = Coefs::identity();
-        self.z1 = 0.0;
-        self.freq = 0.0;
+        self.coefs = CoefsSimd::identity();
+
+        self.z1[CH_L] = 0.0;
+        self.z1[CH_R] = 0.0;
+        self.freq[CH_L] = 0.0;
+        self.freq[CH_R] = 0.0;
     }
 
     /// Sets the frequency of the filter.
@@ -77,10 +81,11 @@ impl Filter {
     /// is negative.
     pub fn set_freq(&mut self, freq: f32) {
         debug_assert!(
-            freq.is_sign_positive() && freq <= self.sample_rate * 0.5
+            freq.is_sign_positive() && freq <= self.sample_rate[CH_L] * 0.5
         );
 
-        self.freq = freq;
+        self.freq[CH_L] = freq;
+        self.freq[CH_R] = freq;
         self.set_coefs();
     }
 
@@ -92,10 +97,13 @@ impl Filter {
     fn set_coefs(&mut self) {
         let Self { freq: w, sample_rate: sr, .. } = *self;
         let is_lowpass = matches!(self.filter_type, FilterType::Lowpass);
-        let (phi_sin, phi_cos) = ((TAU * w) / sr).sin_cos();
 
-        let b1 = (-phi_cos) / (1.0 + phi_sin);
-        let a0 = (1.0 + if is_lowpass { b1 } else { -b1 }) * 0.5;
+        let phi = (SIMD_TAU * w) / sr;
+        let phi_sin = phi.sin();
+        let phi_cos = phi.cos();
+
+        let b1 = (-phi_cos) / (SIMD_ONE + phi_sin);
+        let a0 = (SIMD_ONE + if is_lowpass { b1 } else { -b1 }) * SIMD_HALF;
 
         self.coefs.b1 = b1;
         self.coefs.a0 = a0;
@@ -103,9 +111,10 @@ impl Filter {
     }
 }
 
-impl AudioEffect for Filter {
-    fn tick(&mut self, channel: usize, sample: f32) -> f32 {
-        let Coefs { a0, a1, b1 } = self.coefs;
+impl SimdAudioEffect for Filter {
+    #[inline]
+    fn tick(&mut self, sample: f32x2) -> f32x2 {
+        let CoefsSimd { a0, a1, b1 } = self.coefs;
 
         let out = a0.mul_add(sample, self.z1);
         self.z1 = a1.mul_add(sample, -b1 * out);
@@ -114,10 +123,6 @@ impl AudioEffect for Filter {
     }
 
     fn sample_rate(&self) -> f32 {
-        self.sample_rate
-    }
-
-    fn num_channels(&self) -> usize {
-        1
+        self.sample_rate[CH_L]
     }
 }
