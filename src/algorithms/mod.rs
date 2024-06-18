@@ -63,8 +63,8 @@ pub trait SortProcessor: Debug + Send + Sync {
 /// A particular sorting algorithm.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum SortingAlgorithm {
-    Bogo,
     #[default]
+    Bogo,
     Stooge,
 
     Gnome,
