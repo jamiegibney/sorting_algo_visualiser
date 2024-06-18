@@ -23,3 +23,4 @@ debug = "full"
 [profile.release]
 # This option is crucial in order to catch any sorting algorithms which may panic.
 panic = "unwind"
+codegen-units = 1

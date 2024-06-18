@@ -5,6 +5,7 @@ use super::*;
 pub struct AmpEnvelope {
     data: &'static [f32],
     read_pos: usize,
+    simd: f32x2,
 }
 
 impl AmpEnvelope {
@@ -20,6 +21,7 @@ impl AmpEnvelope {
                 )
             },
             read_pos: 0,
+            simd: f32x2::from_array([0.0, 0.0]),
         }
     }
 
@@ -36,18 +38,16 @@ impl AmpEnvelope {
         Some(self.data[pos])
     }
 
-    pub fn next_simd(&mut self) -> f32x64 {
-        let until_done = self.data.len() - self.read_pos;
-        let start = self.read_pos;
+    /// Returns the next envelope sample as a `f32x2` SIMD type. If the envelope
+    /// has reached its end, then `Self::next_simd().as_array() == &[0.0, 0.0]`.
+    #[inline]
+    pub fn next_simd(&mut self) -> f32x2 {
+        let val = self.next().unwrap_or_default();
 
-        if until_done >= 64 {
-            self.read_pos += 64;
-            f32x64::from_slice(&self.data[start..self.read_pos])
-        }
-        else {
-            self.read_pos = self.data.len();
-            f32x64::load_or_default(&self.data[start..])
-        }
+        self.simd[CH_L] = val;
+        self.simd[CH_R] = val;
+
+        self.simd
     }
 
     /// Whether the envelope is active.

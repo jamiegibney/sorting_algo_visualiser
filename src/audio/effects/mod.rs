@@ -5,15 +5,22 @@ use nannou_audio::Buffer;
 
 pub mod ballistics_filter;
 pub mod delay;
-pub mod filter;
+// pub mod filter;
 pub mod ring_buf;
 pub mod verb;
+pub mod filter_simd;
 
 pub use ballistics_filter::BallisticsFilter;
 pub use delay::DelayLine;
-pub use filter::{Filter, FilterType};
+pub use filter_simd::{FilterSimd, FilterType};
 pub use ring_buf::RingBuffer;
 pub use verb::Reverb;
+
+/// Trait for SIMD audio processing effects, which *only* support two channels.
+pub trait SimdAudioEffect: Debug + Clone {
+    fn tick(&mut self, sample: f32x2) -> f32x2;
+    fn sample_rate(&self) -> f32;
+}
 
 /// Trait for audio processing effects.
 pub trait AudioEffect: Debug + Clone {

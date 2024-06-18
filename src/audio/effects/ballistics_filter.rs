@@ -3,7 +3,7 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct BallisticsFilter {
     /// A buffer for storing the last set of output samples.
-    y_old: Vec<f32>,
+    z1: f32x2,
 
     /// The "constant time envelope" attack level.
     cte_attack: f32,
@@ -11,19 +11,19 @@ pub struct BallisticsFilter {
     cte_release: f32,
 
     /// The internal sample rate.
-    sample_rate: f32,
+    sample_rate: f32x2,
 }
 
 impl BallisticsFilter {
     /// Creates a new `BallisticsFilter` which can store `num_channels` samples.
     pub fn new(num_channels: usize, sample_rate: f32) -> Self {
         Self {
-            y_old: vec![0.0; num_channels],
+            z1: SIMD_ZERO,
 
             cte_attack: 0.0,
             cte_release: 0.0,
 
-            sample_rate,
+            sample_rate: f32x2::splat(sample_rate),
         }
     }
 
@@ -49,12 +49,14 @@ impl BallisticsFilter {
 
     /// Resets the internal buffer to `0.0`.
     pub fn reset(&mut self) {
-        self.y_old.fill(0.0);
+        self.z1[CH_L] = 0.0;
+        self.z1[CH_R] = 0.0;
     }
 
     /// Sets the attack time of the filter in milliseconds.
     ///
-    /// Values less than `0.001` ms (`1.0` µs) are automatically snapped to `0.0`.
+    /// Values less than `0.001` ms (`1.0` µs) are automatically snapped to
+    /// `0.0`.
     ///
     /// # Panics
     ///
@@ -66,7 +68,8 @@ impl BallisticsFilter {
 
     /// Sets the release time of the filter in milliseconds.
     ///
-    /// Values less than `0.001` ms (`1.0` µs) are automatically snapped to `0.0`.
+    /// Values less than `0.001` ms (`1.0` µs) are automatically snapped to
+    /// `0.0`.
     ///
     /// # Panics
     ///
@@ -76,46 +79,59 @@ impl BallisticsFilter {
         self.cte_release = self.calculate_cte(time_ms);
     }
 
-    /// Calculates the constant time envelope ("CTE") value for the given period.
+    /// Calculates the constant time envelope ("CTE") value for the given
+    /// period.
     ///
-    /// Values less than `0.001` ms (`1.0` µs) are automatically snapped to `0.0`.
+    /// Values less than `0.001` ms (`1.0` µs) are automatically snapped to
+    /// `0.0`.
     fn calculate_cte(&self, time_ms: f32) -> f32 {
         if time_ms < 0.001 {
             0.0
-        } else {
-            ((-TAU * 1000.0 / self.sample_rate) / time_ms).exp()
+        }
+        else {
+            ((-TAU * 1000.0 / self.sample_rate[CH_L]) / time_ms).exp()
         }
     }
-}
 
-impl AudioEffect for BallisticsFilter {
-    fn tick(&mut self, channel: usize, mut sample: f32) -> f32 {
-        const CH_L: usize = 0;
-        const CH_R: usize = 1;
+    #[inline]
+    fn simd_cte(&self, sample: f32x2) -> f32x2 {
+        let mask = sample.simd_gt(self.z1);
 
-        sample = sample.abs();
-
-        // obtain the correct CTE values
-        let cte = if sample > self.y_old[channel] {
+        let cte_l = if unsafe { mask.test_unchecked(CH_L) } {
             self.cte_attack
-        } else {
+        }
+        else {
+            self.cte_release
+        };
+        let cte_r = if unsafe { mask.test_unchecked(CH_R) } {
+            self.cte_attack
+        }
+        else {
             self.cte_release
         };
 
+        f32x2::from_array([cte_l, cte_r])
+    }
+}
+
+impl SimdAudioEffect for BallisticsFilter {
+    #[inline]
+    fn tick(&mut self, mut sample: f32x2) -> f32x2 {
+        sample = sample.abs();
+
+        // obtain the correct CTE values
+        let cte = self.simd_cte(sample);
+
         // process the samples
-        let out = sample + cte * (self.y_old[CH_L] - sample);
+        let out = sample + cte * (self.z1 - sample);
 
         // store them for the next call
-        self.y_old[channel] = out;
+        self.z1 = out;
 
         out
     }
 
     fn sample_rate(&self) -> f32 {
-        self.sample_rate
-    }
-
-    fn num_channels(&self) -> usize {
-        self.y_old.len()
+        self.sample_rate[CH_L]
     }
 }

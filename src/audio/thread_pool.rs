@@ -25,7 +25,7 @@ struct Worker {
 #[derive(Debug)]
 struct VoiceThreadData {
     /// The audio output buffer for this thread.
-    output_buffer: Arc<Mutex<Vec<f32>>>,
+    output_buffer: Arc<Mutex<Vec<f32x2>>>,
 
     /// The note event receiver.
     note_receiver: Arc<Receiver<NoteEvent>>,
@@ -57,6 +57,9 @@ impl Worker {
 
                 let mut handler = data.voice_handler.lock();
 
+                // TODO: handle the voice gain in a better way.
+                let gain = [f32x2::splat(0.08); MAX_BLOCK_SIZE];
+
                 loop {
                     data.busy_flag.store(false, Relaxed);
 
@@ -69,17 +72,21 @@ impl Worker {
 
                     'process: {
                         let mut next_event = data.note_receiver.try_recv().ok();
+
+                        // we panic here as it's a logic error for any of these
+                        // buffers to be locked by another thread before this
+                        // thread executes its audio processing.
                         let mut buf = data
                             .output_buffer
                             .try_lock()
                             .unwrap_or_else(|| {
                                 panic!(
-                                    "failed to lock output buffer for thread {id}"
+                                    "failed to lock voice buffer for voice thread #{id}"
                                 )
                             });
 
-                        let buffer_len = buf.len() / NUM_CHANNELS;
-                        buf.fill(0.0);
+                        let buffer_len = buf.len();
+                        buf.fill(f32x2::splat(0.0));
 
                         // TODO: could this be implemented?
                         // if next_event.is_none() && !handler.any_active() {
@@ -123,9 +130,6 @@ impl Worker {
                                 }
                             }
 
-                            // TODO: handle the voice gain in a better way.
-                            let mut gain = [0.08; MAX_BLOCK_SIZE];
-
                             // process voices and clean any which are finished
                             handler.process_block(
                                 &mut buf, block_start, block_end, gain,
@@ -164,7 +168,7 @@ impl Worker {
 
 #[derive(Debug)]
 pub struct AudioThreadPoolReferences<'a> {
-    pub output_buffers: &'a [Arc<Mutex<Vec<f32>>>],
+    pub output_buffers: &'a [Arc<Mutex<Vec<f32x2>>>],
     pub voice_handlers: &'a [Arc<Mutex<VoiceHandler>>],
     pub voice_counters: &'a [Arc<AtomicU32>],
     pub modified_flags: &'a [Arc<AtomicBool>],

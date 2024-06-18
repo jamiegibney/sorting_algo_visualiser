@@ -1,11 +1,16 @@
 use super::*;
 use atomic::Atomic;
 use bytemuck::NoUninit;
+use compressor::Compressor;
 use crossbeam_channel::Receiver;
 use nannou_audio::*;
 use std::sync::atomic::AtomicU32;
 use std::time::Instant;
-// use thread_pool::ThreadPool;
+use thread_pool::{AudioThreadPool, AudioThreadPoolReferences, MAX_BLOCK_SIZE};
+
+pub use effects::*;
+pub use effects::{AudioEffect, StereoEffect};
+pub use voice::{VoiceHandler, NUM_VOICES};
 
 mod compressor;
 pub mod effects;
@@ -16,12 +21,10 @@ mod thread_pool;
 mod tri;
 mod voice;
 
-use compressor::Compressor;
-pub use effects::*;
-pub use effects::{AudioEffect, StereoEffect};
-use thread_pool::{AudioThreadPool, AudioThreadPoolReferences, MAX_BLOCK_SIZE};
-pub use voice::{VoiceHandler, NUM_VOICES};
+pub const CH_L: usize = 0;
+pub const CH_R: usize = 1;
 
+// Musical scales
 pub const MAJ_PENT_SCALE: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
 pub const MIN_PENT_SCALE: [f32; 5] = [0.0, 3.0, 5.0, 7.0, 10.0];
 pub const MAJOR_SCALE: [f32; 7] = [0.0, 2.0, 4.0, 5.0, 7.0, 9.0, 11.0];
@@ -34,9 +37,10 @@ pub const NUM_CHANNELS: usize = 2;
 /// The app's audio buffer size.
 pub const BUFFER_SIZE: usize = 1 << 9; // 512
 
-const VOICES_PER_HANDLER: usize = NUM_VOICES / NUM_AUDIO_THREADS;
 /// The number of threads used for concurrent audio generation.
 const NUM_AUDIO_THREADS: usize = 16;
+/// The number of voices per `VoiceHandler`.
+const VOICES_PER_HANDLER: usize = NUM_VOICES / NUM_AUDIO_THREADS;
 
 /// The types of oscillators available.
 #[derive(Clone, Copy, Debug, Default)]
@@ -55,7 +59,7 @@ pub trait Oscillator: std::fmt::Debug {
 /// Trait for SIMD oscillators.
 pub trait SimdOscillator: std::fmt::Debug {
     fn set_frequency(&mut self, freq_hz: f32, sample_rate: f32);
-    fn tick(&mut self) -> f32x64;
+    fn tick(&mut self) -> f32x2;
 }
 
 /// An atomic-compatible wrapper around an `Instant`.
@@ -84,12 +88,17 @@ pub struct Audio {
     // audio threads.
     voice_handlers: Vec<Arc<Mutex<VoiceHandler>>>,
     /// The audio voice buffers.
-    voice_buffers: Vec<Arc<Mutex<Vec<f32>>>>,
+    voice_buffers: Vec<Arc<Mutex<Vec<f32x2>>>>,
+    /// The counters for the number of active voices for each voice handler.
     voice_counters: Vec<Arc<AtomicU32>>,
     /// The buffers which were modified (i.e. written to) for this block.
     modified_buffers: Vec<Arc<AtomicBool>>,
     /// The audio voice thread pool.
     thread_pool: AudioThreadPool,
+
+    /// The "main" audio buffer for the audio model, which uses SIMD values and
+    /// is copied to the main buffer.
+    main_buffer: Vec<f32x2>,
 
     callback_timer: Arc<Atomic<InstantTime>>,
 
@@ -97,8 +106,8 @@ pub struct Audio {
 
     running: bool,
     compressor: Compressor,
-    lp: StereoEffect<Filter>,
-    hp: StereoEffect<Filter>,
+    lp: FilterSimd,
+    hp: FilterSimd,
     dsp_load: Arc<Atomic<f32>>,
 }
 
@@ -124,10 +133,10 @@ impl Audio {
             })
             .collect();
 
-        let voice_buffers: Vec<Arc<Mutex<Vec<f32>>>> = (0..NUM_AUDIO_THREADS)
-            .map(|_| {
-                Arc::new(Mutex::new(vec![0.0; NUM_CHANNELS * BUFFER_SIZE]))
-            })
+        // note that this program only supports two channels, so we use f32x2 as
+        // the sample type to represent both channels.
+        let voice_buffers: Vec<Arc<Mutex<Vec<f32x2>>>> = (0..NUM_AUDIO_THREADS)
+            .map(|_| Arc::new(Mutex::new(vec![f32x2::splat(0.0); BUFFER_SIZE])))
             .collect();
 
         let modified_buffers: Vec<Arc<AtomicBool>> = (0..NUM_AUDIO_THREADS)
@@ -159,6 +168,8 @@ impl Audio {
             voice_counters,
             modified_buffers,
 
+            main_buffer: vec![f32x2::splat(0.0); BUFFER_SIZE],
+
             callback_timer: Arc::new(Atomic::new(InstantTime(Instant::now()))),
             voice_counter,
             running: true,
@@ -166,16 +177,12 @@ impl Audio {
                 .with_threshold_db(-18.0)
                 .with_ratio(100.0)
                 .with_knee_width(12.0),
-            lp: StereoEffect::splat(
-                Filter::new(sr)
-                    .with_type(FilterType::Lowpass)
-                    .with_freq(4000.0),
-            ),
-            hp: StereoEffect::splat(
-                Filter::new(sr)
-                    .with_type(FilterType::Highpass)
-                    .with_freq(300.0),
-            ),
+            lp: FilterSimd::new(sr)
+                .with_type(FilterType::Lowpass)
+                .with_freq(4000.0),
+            hp: FilterSimd::new(sr)
+                .with_type(FilterType::Highpass)
+                .with_freq(300.0),
             dsp_load: Arc::new(Atomic::new(0.0)),
         }
     }
@@ -193,6 +200,14 @@ impl Audio {
     /// Returns a reference to the DSP load level.
     pub const fn dsp_load(&self) -> &Arc<Atomic<f32>> {
         &self.dsp_load
+    }
+
+    pub fn update_callback_timer(&self) {
+        let timer = &self.callback_timer;
+
+        if timer.load(Relaxed).elapsed().as_secs_f32() >= 0.0001 {
+            timer.store(InstantTime(Instant::now()), Relaxed);
+        }
     }
 
     /// Converts the `AudioModel` into a CPAL audio stream.
@@ -216,7 +231,9 @@ impl Audio {
 
     pub fn stop(&mut self) {
         self.running = false;
-        self.voice_buffers.iter().for_each(|b| b.lock().fill(0.0));
+        self.voice_buffers
+            .iter()
+            .for_each(|b| b.lock().fill(f32x2::splat(0.0)));
     }
 
     pub fn start(&mut self) {
@@ -277,6 +294,30 @@ impl Audio {
         20.0 * level.abs().log10()
     }
 
+    /// Calculates amplitude in decibels from a SIMD vector of linear power
+    /// levels.
+    #[inline]
+    pub fn level_to_db_simd(level: f32x2) -> f32x2 {
+        const SIMD_20: f32x2 = f32x2::from_array([20.0, 20.0]);
+        SIMD_20 * level.abs().log10()
+    }
+
+    /// Calculates the linear power level from a SIMD vector of amplitude (as
+    /// decibels).
+    #[inline]
+    pub fn db_to_level_simd(db_value: f32x2) -> f32x2 {
+        const SIMD_10: f32x2 = f32x2::from_array([10.0, 10.0]);
+        const SIMD_20: f32x2 = f32x2::from_array([20.0, 20.0]);
+
+        // there is no `powf()` implemented for SIMD types, but we can use
+        // exp2(log2(x) * power) to achieve the same result. the below is
+        // therefore equivalent to `SIMD_10.powf(db_value / SIMD_20)`.
+        f32x2::exp2(f32x2::log2(SIMD_10) * (db_value / SIMD_20))
+
+        // alternatively...
+        // (SIMD_10.log2() * (db_value / SIMD_20)).exp2()
+    }
+
     /// Calculates the linear power level from amplitude as decibels.
     #[inline]
     pub fn db_to_level(db_value: f32) -> f32 {
@@ -291,40 +332,75 @@ impl Audio {
     }
 }
 
+//
+// Audio processing methods
+//
+
 impl Audio {
-    /// Generates voices based on the incoming audio note events.
-    pub fn process_voices(&mut self, buffer: &mut Buffer) -> bool {
+    /// Generates and processes new audio, and writes it to the provided
+    /// `Buffer`.
+    pub fn process(&mut self, buffer: &mut Buffer) {
+        // if any of these buffers are locked before we call the voice thread
+        // pool, then there's a scheduling error in the pool.
         for (i, buf) in self.voice_buffers.iter().enumerate() {
-            assert!(
+            debug_assert!(
                 !buf.is_locked(),
-                "buffer {i} was locked before dispatching threads"
+                "voice buffer {i} was locked before dispatching voice threads"
             );
         }
 
         let any_executed = self.thread_pool.execute();
 
-        self.add_modified_to_buffer(buffer);
-        self.update_voice_counter();
+        self.sum_to_main_buf();
 
-        any_executed
+        if any_executed {
+            self.process_fx();
+        }
+
+        self.copy_to_main_buffer(buffer);
+        self.update_voice_counter();
     }
 
-    fn add_modified_to_buffer(&self, buffer: &mut Buffer) {
-        for (i, flag) in self
+    /// Processes the internal FX on the main SIMD buffer.
+    #[inline]
+    fn process_fx(&mut self) {
+        for sample in &mut self.main_buffer {
+            *sample = self.hp.tick(*sample);
+            *sample = self.compressor.tick(*sample);
+
+            *sample = sample.simd_clamp(-SIMD_ONE, SIMD_ONE);
+        }
+    }
+
+    /// Copies the contents of the main SIMD buffer to the main audio buffer.
+    #[inline]
+    fn copy_to_main_buffer(&mut self, buffer: &mut Buffer) {
+        for (i, fr) in buffer.frames_mut().enumerate() {
+            fr[CH_L] = self.main_buffer[i][CH_L];
+            fr[CH_R] = self.main_buffer[i][CH_R];
+        }
+
+        self.main_buffer.fill(f32x2::splat(0.0));
+    }
+
+    /// Sums the contents of the modified voices buffers to the main SIMD
+    /// buffer.
+    #[inline]
+    fn sum_to_main_buf(&mut self) {
+        for (buf, flag) in self
             .modified_buffers
             .iter()
             .filter(|f| f.load(Relaxed))
             .enumerate()
         {
-            let mut buf = self.voice_buffers[i].lock();
-            for (i, sample) in buffer.iter_mut().enumerate() {
+            let mut buf = self.voice_buffers[buf].lock();
+
+            for (i, sample) in self.main_buffer.iter_mut().enumerate() {
                 *sample += buf[i];
             }
-            drop(buf);
 
             // reset the flag and the buffer for the next frame
             flag.store(false, Relaxed);
-            // buf.fill(0.0);
         }
     }
 }

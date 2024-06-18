@@ -130,22 +130,28 @@ impl Compressor {
             (ratio.recip() - 1.0) * (input - thresh)
         }
     }
+
+    #[inline]
+    fn gain_function_simd(&self, sample: f32x2) -> f32x2 {
+        let l = self.gain_function(sample[CH_L]);
+        let r = self.gain_function(sample[CH_R]);
+
+        f32x2::from_array([l, r])
+    }
 }
 
-impl AudioEffect for Compressor {
-    fn tick(&mut self, channel: usize, sample: f32) -> f32 {
-        let env = self.filter.tick(channel, sample);
-        let gain =
-            Audio::db_to_level(self.gain_function(Audio::level_to_db(env)));
+impl SimdAudioEffect for Compressor {
+    #[inline]
+    fn tick(&mut self, sample: f32x2) -> f32x2 {
+        let env = self.filter.tick(sample);
+        let gain = Audio::db_to_level_simd(
+            self.gain_function_simd(Audio::level_to_db_simd(env)),
+        );
 
         gain * sample
     }
 
     fn sample_rate(&self) -> f32 {
         self.sample_rate
-    }
-
-    fn num_channels(&self) -> usize {
-        self.filter.num_channels()
     }
 }

@@ -14,16 +14,11 @@ const ENVELOPE_LENGTH: f32 = 1.0;
 struct Voice {
     id: u64,
     sample_rate: f32,
-    // osc: Box<dyn Oscillator + Send>,
     osc: Box<dyn SimdOscillator + Send>,
-
-    data: f32x64,
-    read_pos: usize,
-
     freq: f32,
     envelope: AmpEnvelope,
-    amp: f32x64,
-    pan: (f32, f32),
+    amp: f32x2,
+    pan: f32x2,
 }
 
 impl Voice {
@@ -33,36 +28,34 @@ impl Voice {
         sr: f32,
         envelope_data: &[u8],
     ) -> Self {
-        let mut s = Self {
+        Self {
             id,
             sample_rate: sr,
             osc: match event.osc() {
-                _ => {
+                OscillatorType::Sine => {
                     Box::new(SineOscSimd::new(event.freq(), sr))
                         as Box<dyn SimdOscillator + Send>
                 }
-                // OscillatorType::Tri => {
-                //     Box::new(TriOscSimd::new(event.freq(), sr))
-                //         as Box<dyn SimdOscillator + Send>
-                // }
+                OscillatorType::Tri => {
+                    Box::new(TriOscSimd::new(event.freq(), sr))
+                        as Box<dyn SimdOscillator + Send>
+                }
             },
-            data: f32x64::splat(0.0),
-            read_pos: 0,
             freq: event.freq(),
-            amp: f32x64::splat(event.amp()),
+            amp: f32x2::splat(event.amp()),
             envelope: AmpEnvelope::new(envelope_data),
             pan: {
                 let pan = (event.pan() + 1.0) * 0.5;
                 let left = pan;
                 let right = 1.0 - pan;
 
-                (left, right)
+                f32x2::from_array([left, right])
             },
-        };
+        }
+    }
 
-        s.compute();
-
-        s
+    pub fn next(&mut self) -> f32x2 {
+        self.osc.tick() * self.amp * self.pan * self.envelope.next_simd()
     }
 
     /// Sets the frequency of the voice.
@@ -74,24 +67,6 @@ impl Voice {
     /// Returns `true` when the voice has finished producing audio.
     pub const fn is_finished(&self) -> bool {
         !self.envelope.is_active()
-    }
-
-    pub fn next(&mut self) -> (f32, f32) {
-        let out = self.data.as_array()[self.read_pos];
-
-        self.read_pos += 1;
-
-        if self.read_pos == 64 {
-            self.compute();
-            self.read_pos = 0;
-        }
-
-        (out * self.pan.0, out * self.pan.1)
-    }
-
-    fn compute(&mut self) {
-        self.data = self.osc.tick() * self.amp * self.envelope.next_simd();
-        // println!("data for voice #{}: {:?}\n\n", self.id, self.data);
     }
 }
 
@@ -147,21 +122,17 @@ impl VoiceHandler {
     }
 
     /// Processes a block of audio.
+    #[inline]
     pub fn process_block(
         &mut self,
-        buffer: &mut [f32],
+        buffer: &mut [f32x2],
         block_start: usize,
         block_end: usize,
-        gain: [f32; MAX_BLOCK_SIZE],
+        gain: [f32x2; MAX_BLOCK_SIZE],
     ) {
-        let block_len = block_end - block_start;
-
         for voice in self.voices.iter_mut().flatten() {
             for (i, sample) in (block_start..block_end).enumerate() {
-                let (l, r) = voice.next();
-
-                buffer[sample * 2] += l * gain[i];
-                buffer[sample * 2 + 1] += r * gain[i];
+                buffer[sample] += voice.next() * gain[i];
             }
         }
     }

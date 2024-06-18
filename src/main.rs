@@ -9,7 +9,6 @@ static GLOBAL: MiMalloc = MiMalloc;
 use nannou::prelude::*;
 
 mod algorithms;
-mod thread_pool;
 mod audio;
 mod color_wheel;
 mod message;
@@ -17,6 +16,7 @@ mod model;
 mod prelude;
 mod process;
 mod sorting;
+mod thread_pool;
 mod ui;
 
 use audio::*;

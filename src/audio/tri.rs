@@ -2,8 +2,8 @@ use super::*;
 
 #[derive(Debug)]
 pub struct TriOscSimd {
-    inc: f32x64,
-    phase: f32x64,
+    inc: f32x2,
+    phase: f32x2,
 }
 
 impl TriOscSimd {
@@ -11,9 +11,8 @@ impl TriOscSimd {
         debug_assert!(0.0 < freq_hz && freq_hz <= sample_rate * 0.5);
 
         let inc = freq_hz / sample_rate;
-        let inc = f32x64::splat(inc);
 
-        Self { inc, phase: inc * SIMD_STAGGER }
+        Self { inc: f32x2::splat(inc), phase: f32x2::splat(0.0) }
     }
 }
 
@@ -22,13 +21,13 @@ impl SimdOscillator for TriOscSimd {
         debug_assert!(0.0 < freq_hz && freq_hz <= sample_rate * 0.5);
 
         let inc = freq_hz / sample_rate;
-        self.inc = f32x64::splat(inc);
 
-        let stagger = f32x64::from_array(std::array::from_fn(|i| i as f32));
-        self.phase = self.inc * stagger;
+        self.inc[CH_L] = inc;
+        self.inc[CH_R] = inc;
     }
 
-    fn tick(&mut self) -> f32x64 {
+    #[inline]
+    fn tick(&mut self) -> f32x2 {
         let x = self.phase.mul_add(SIMD_TWO, -SIMD_ONE);
         self.phase = (self.phase + self.inc).fract();
 

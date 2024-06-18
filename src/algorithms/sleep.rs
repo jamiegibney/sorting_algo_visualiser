@@ -18,6 +18,7 @@ impl Sleep {
 impl SortProcessor for Sleep {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
+        self.output_arr.lock().reserve_exact(n);
 
         let mut threads = vec![];
 
@@ -26,6 +27,10 @@ impl SortProcessor for Sleep {
             let element = arr.read(i);
 
             threads.push(spawn(move || {
+                thread_priority::set_current_thread_priority(
+                    thread_priority::ThreadPriority::Max,
+                );
+
                 sleep(Duration::from_millis(element as u64 * 10));
                 out.lock().push(element);
             }));
