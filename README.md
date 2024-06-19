@@ -16,7 +16,7 @@ Due to the use of SIMD, this project requires the nightly Rust compiler when bui
 
 ## Keymap
 
-Currently, the only way to interact with the program is via keymaps. A mouse-based UI is WIP.
+Currently, the only way to interact with the program is via keymaps. A mouse-based UI is currently a WIP.
 
 - `Space`: toggle algorithm playback (or restart playback if the end has been reached)
 - `Backspace` or `Delete`: stop and reset playback to the beginning
@@ -73,27 +73,26 @@ Currently, the only way to interact with the program is via keymaps. A mouse-bas
 - [ ] Fix crash when resizing array during playback ([#2](https://github.com/jamiegibney/sorting_algo_visualiser/issues/2))
 - [ ] Fix sort operation slice bounds ([#3](https://github.com/jamiegibney/sorting_algo_visualiser/issues/3))
 
-#### Refactors
-- [ ] Separate the sorting array to a separate type, which is held by a "manager" which offers methods like prepare, capture dumping, resizing etc. This prevents sorting algorithms from modifying the actual array beyond the usual sorting operations.
-- [ ] Better names for certain types/functions
-- [ ] Manage which audio threads receive which incoming events more intelligently.
-- [ ] Further optimise audio processing (SIMD?) to increase max voice count.
-- [ ] Add a more efficient blocking method to the thread pools (e.g. spin-lock).
-
 #### Features
 - [x] Parallelise the audio processing, so multiple threads can generate groups of voices and then sum the result on the main audio thread.
 - [x] Allow user to mute audio
 - [x] Swap/comparison operations should post note events for both array positions, rather than an average.
 - [x] Add the ability for an "auto" command where the array is shuffled, the next algorithm is selected, and then the array is sorted with that algorithm.
-- [ ] Add certain array size restrictions for particular algorithms (such as bogo or stooge sort)
-- [ ] Add sorting algorithms
-    - [ ] Bucket sort
-    - [ ] Bingo sort (sort of there...)
-    - [ ] Strand sort?
-    - [ ] Tree sort?
-    - [ ] Bitonic sort?
+- [ ] Add array size restrictions for particular algorithms (such as bogo or stooge sort)
 - [ ] UI controls
     - [ ] Playback controls
     - [ ] Menu for sorting algorithms
-    - [ ] Buttons for sorting/shuffling/resetting...
-    - [ ] Different font, because why not
+    - [ ] Buttons for sorting/shuffling/resetting
+    - [ ] Different font?
+- [ ] Implement sorting algorithms
+    - [x] Bingo sort
+    - [ ] Bucket sort
+    - [ ] Strand sort? Normally uses an input & output buffer, so might be boring to visualise.
+    - [ ] Tree sort? Uses a node-based data structure, which might take a while to implement.
+    - [ ] Bitonic sort? Normally requires arrays with a power-of-two size.
+
+#### Refactors
+- [x] Further optimise audio processing (SIMD?) to increase max voice count.
+- [ ] Separate the sorting array to a separate type, which is held by a "manager" which offers methods like prepare, capture dumping, resizing etc. This prevents sorting algorithms from modifying the actual array beyond the usual sorting operations.
+- [ ] Manage which audio threads receive which incoming events more intelligently.
+- [ ] Add a more efficient blocking method to the thread pools (e.g. spin-lock?).
