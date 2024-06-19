@@ -12,7 +12,7 @@ Due to the use of SIMD, this project requires the nightly Rust compiler when bui
 
 #### Audio
 
-Aside from "recording" the and visualising sorting algorithms, this project was also used as a sandbox to try to efficiently handle a large number of audio voices in parallel: currently up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised. The audio generation utilises SIMD and multi-threading optimisations to generate voices on up to 16 threads. The audio FX processors (a high-pass filter and compressor) also use SIMD operations.
+Aside from "recording" and visualising sorting algorithms, this project was also used as a sandbox to try to efficiently handle a large number of audio voices in parallel: currently up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised. The audio generation utilises SIMD and multi-threading optimisations to generate voices on up to 16 threads. The audio FX processors (a high-pass filter and compressor) also use SIMD operations.
 
 The SIMD optimisations do not drastically improve performance, and are mainly used to handle stereo audio processing in single steps. The multi-threaded voice generation, however, improves audio performance by approximately 10x, based on some rough tests. This is likely because each individual voice is relatively simple to compute, but there may be a large magnitude of them to compute per audio buffer, depending on the number of incoming audio note events.
 
