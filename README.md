@@ -2,21 +2,27 @@
 
 [Full video](https://drive.google.com/file/d/1UTanxeJtD_La77ys0kDYRH2Z_1uQbJi4/view?usp=sharing)
 
-A sorting algorithm "audio-visualiser", written in Rust and the [nannou](https://github.com/nannou-org/nannou) library. Heavily inspired by w0rthy's [ArrayVisualiser](https://github.com/w0rthy/ArrayVisualizer). Many of the sorting algorithm implementations were based on examples from [GeeksforGeeks](https://www.geeksforgeeks.org/sorting-algorithms/).
+A sorting algorithm "audio-visualiser", written in Rust. This app includes 22 different sorting algorithms, and 1 kind of visualiser.
 
 This app draws a colour wheel, which is made up of a variable number of segments. These segments can be randomly shuffled, and then re-sorted via various different sorting algorithms.
 
 The sorting operations (writes, swaps, comparisons, reads) are "recorded" and used to update the colour wheel display *and* send audio note messages.
 
+#### Inspiration & credit
+
+Heavily inspired by w0rthy's [ArrayVisualiser](https://github.com/w0rthy/ArrayVisualizer). Many of the sorting algorithm implementations were based on examples from [GeeksforGeeks](https://www.geeksforgeeks.org/sorting-algorithms/). The thread pool implementations are loosely based on the one provided in the [Rust Book](https://rust-book.cs.brown.edu/ch20-03-graceful-shutdown-and-cleanup.html). The [nannou](https://github.com/nannou-org/nannou) library is used to handle the audio/window/graphics backends, and provide useful application tools.
+
+## Building/running from source
+
 Due to the use of SIMD, this project requires the nightly Rust compiler when building from source.
 
-#### Audio
+```shell
+$ git clone https://github.com/jamiegibney/sorting_algo_visualiser.git
+$ cd sorting_algo_visualiser
+$ cargo +nightly run --release -- -Ctarget-cpu=native
+```
 
-Aside from "recording" and visualising sorting algorithms, this project was also used as a sandbox to try to efficiently handle a large number of audio voices in parallel: currently up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised. The audio generation utilises SIMD and multi-threading optimisations to generate voices on up to 16 threads. The audio FX processors (a high-pass filter and compressor) also use SIMD operations.
-
-The SIMD optimisations do not drastically improve performance, and are mainly used to handle stereo audio processing in single steps. The multi-threaded voice generation, however, improves audio performance by approximately 10x, based on some rough tests. This is likely because each individual voice is relatively simple to compute, but there may be a large magnitude of them to compute per audio buffer, depending on the number of incoming audio note events.
-
-Significantly, when large amounts of voices are processed, the overall level pushes a built-in compressor (which acts more like a limiter) very hard, which was added to control the level across all algorithms. This works well with respect to level, but the clarity of the audio voices is negatively affected as, if any frequencies are particularly loud, they dominate the audio output as the other voices are naturally attenuated by the compressor. In a nutshell — it may be more beneficial to consider a more appropriate way of posting audio events, rather than simply handling more of them overall.
+The `-Ctarget-cpu=native` flag is recommended for improved SIMD performance, but is not required.
 
 ## Keymap
 
@@ -69,6 +75,16 @@ Currently, the only way to interact with the program is via keymaps. A mouse-bas
     - MSD, base 32
     - MSD, base 1000
 - Sleep sort (currently not guaranteed to sort the array, just in here for fun)
+
+## Audio
+
+Aside from "recording" and visualising sorting algorithms, this project was also used as a sandbox to try to efficiently handle a large number of audio voices in parallel: currently up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised. The audio generation utilises SIMD and multi-threading optimisations to generate voices on up to 16 threads. The audio FX processors (a high-pass filter and compressor) also use SIMD operations.
+
+The SIMD optimisations do not drastically improve performance, and are mainly used to handle stereo audio processing in single steps. The multi-threaded voice generation, however, improves audio performance by approximately 10x, based on some rough tests. This is likely because each individual voice is relatively simple to compute, but there may be a large magnitude of them to compute per audio buffer, depending on the number of incoming audio note events.
+
+Significantly, when large amounts of voices are processed, the overall level pushes a built-in compressor (which acts more like a limiter) very hard, which was added to control the level across all algorithms. This works well with respect to level, but the clarity of the audio voices is negatively affected as, if any frequencies are particularly loud, they dominate the audio output as the other voices are naturally attenuated by the compressor. In a nutshell — it may be more beneficial to consider a more appropriate way of posting audio events, rather than simply handling more of them overall.
+
+<br>
 
 ## TODO
 
