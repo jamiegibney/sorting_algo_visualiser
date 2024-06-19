@@ -6,13 +6,17 @@ A sorting algorithm "audio-visualiser", written in Rust and the [nannou](https:/
 
 This app draws a colour wheel, which is made up of a variable number of segments. These segments can be randomly shuffled, and then re-sorted via various different sorting algorithms.
 
-The sorting operations (writes, swaps, comparisons, reads) are "recorded" and used to update the colour wheel display *and* send audio note messages. Up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised.
-
-The audio generation utilises SIMD and multi-threading optimisations to generate voices with SIMD operations in parallel on up to 16 threads. The audio FX processors (a high-pass filter and compressor) also use SIMD operations.
-
-The SIMD optimisation does not drastically improve performance, and is mainly used to handle stereo processing in single steps. The multi-threaded voice generation, however, improves audio performance by approximately 10x based on some rough tests.
+The sorting operations (writes, swaps, comparisons, reads) are "recorded" and used to update the colour wheel display *and* send audio note messages.
 
 Due to the use of SIMD, this project requires the nightly Rust compiler when building from source.
+
+#### Audio
+
+Aside from "recording" the and visualising sorting algorithms, this project was also used as a sandbox to try to efficiently handle a large number of audio voices in parallel: currently up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised. The audio generation utilises SIMD and multi-threading optimisations to generate voices on up to 16 threads. The audio FX processors (a high-pass filter and compressor) also use SIMD operations.
+
+The SIMD optimisations do not drastically improve performance, and are mainly used to handle stereo audio processing in single steps. The multi-threaded voice generation, however, improves audio performance by approximately 10x, based on some rough tests. This is likely because each individual voice is relatively simple to compute, but there may be a large magnitude of them to compute per audio buffer, depending on the number of incoming audio note events.
+
+Significantly, when large amounts of voices are processed, the overall level pushes a built-in compressor (which acts more like a limiter) very hard, which was added to control the level across all algorithms. This works well with respect to level, but the clarity of the audio voices is negatively affected as, if any frequencies are particularly loud, they dominate the audio output as the other voices are naturally attenuated by the compressor. In a nutshell — it may be more beneficial to consider a more appropriate way of posting audio events, rather than simply handling more of them overall.
 
 ## Keymap
 
