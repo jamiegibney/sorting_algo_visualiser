@@ -58,8 +58,8 @@ Currently, the only way to interact with the program is via keymaps. A mouse-bas
     - In-place LSD, base 32
     - In-place LSD, base 1000
     - MSD (most significant digit), base 10
-    - MSD (most significant digit), base 32
-    - MSD (most significant digit), base 1000
+    - MSD, base 32
+    - MSD, base 1000
 - Sleep sort (currently not guaranteed to sort the array, just in here for fun)
 
 ## TODO
