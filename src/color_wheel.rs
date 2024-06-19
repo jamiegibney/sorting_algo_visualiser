@@ -9,7 +9,7 @@ use std::{
 };
 
 pub const DEFAULT_RESOLUTION: usize = 256;
-pub const MAX_RESOLUTION: usize = 8192;
+pub const MAX_RESOLUTION: usize = 1 << 14; // 16384
 pub const CIRCLE_RADIUS: f32 = 300.0;
 
 // pub const WRITE_COLOR: Rgb<f32> =
