@@ -26,7 +26,7 @@ impl Shuffle {
         (rand(true), rand(true))
     }
 
-    fn rand_below(len: usize, start: usize, size: usize) -> (usize, usize) {
+    fn rand_below(start: usize, size: usize) -> (usize, usize) {
         let rand = |in_win: bool| {
             let min = if in_win && start >= size { start - size } else { 0 };
             random_range(min, start)
@@ -68,7 +68,7 @@ impl SortProcessor for Shuffle {
         for _ in (0..n * 2).step_by(step) {
             for _ in 0..Self::ITERS_PER_STEP {
                 let (ab, bb) = Self::rand_above(n, head_bot, win_size);
-                let (at, bt) = Self::rand_below(n, head_top, win_size);
+                let (at, bt) = Self::rand_below(head_top, win_size);
                 arr.swap(ab, bt);
                 arr.swap(at, bb);
             }

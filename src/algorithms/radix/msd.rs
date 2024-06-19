@@ -11,7 +11,7 @@ impl RadixMSD {
     }
 
     fn transcribe(arr: &mut SortArray, bins: &[Vec<usize>], min: usize) {
-        let mut total = bins.iter().fold(0, |acc, b| acc + b.len());
+        let total = bins.iter().fold(0, |acc, b| acc + b.len());
 
         let mut tmp = 0;
         for bin in bins.iter().rev() {

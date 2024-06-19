@@ -1,6 +1,6 @@
 use super::*;
 use std::{
-    thread::{sleep, spawn, JoinHandle},
+    thread::{sleep, spawn},
     time::Duration,
 };
 
@@ -27,7 +27,7 @@ impl SortProcessor for Sleep {
             let element = arr.read(i);
 
             threads.push(spawn(move || {
-                thread_priority::set_current_thread_priority(
+                _ = thread_priority::set_current_thread_priority(
                     thread_priority::ThreadPriority::Max,
                 );
 
@@ -37,7 +37,7 @@ impl SortProcessor for Sleep {
         }
 
         for th in threads {
-            th.join();
+            th.join().unwrap();
         }
 
         let mut out = self.output_arr.lock();

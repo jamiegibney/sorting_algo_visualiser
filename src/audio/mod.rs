@@ -1,18 +1,16 @@
 use super::*;
 use atomic::Atomic;
 use bytemuck::NoUninit;
-use compressor::Compressor;
 use crossbeam_channel::Receiver;
 use nannou_audio::*;
 use std::sync::atomic::AtomicU32;
 use std::time::Instant;
 use thread_pool::{AudioThreadPool, AudioThreadPoolReferences, MAX_BLOCK_SIZE};
 
+pub use effects::AudioEffect;
 pub use effects::*;
-pub use effects::{AudioEffect, StereoEffect};
 pub use voice::{VoiceHandler, NUM_VOICES};
 
-mod compressor;
 pub mod effects;
 mod envelope;
 mod process;
@@ -173,7 +171,7 @@ impl Audio {
             callback_timer: Arc::new(Atomic::new(InstantTime(Instant::now()))),
             voice_counter,
             running: true,
-            compressor: Compressor::new(NUM_CHANNELS, sr)
+            compressor: Compressor::new(sr)
                 .with_threshold_db(-18.0)
                 .with_ratio(100.0)
                 .with_knee_width(12.0),
@@ -393,7 +391,7 @@ impl Audio {
             .filter(|f| f.load(Relaxed))
             .enumerate()
         {
-            let mut buf = self.voice_buffers[buf].lock();
+            let buf = self.voice_buffers[buf].lock();
 
             for (i, sample) in self.main_buffer.iter_mut().enumerate() {
                 *sample += buf[i];

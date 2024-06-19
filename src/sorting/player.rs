@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::thread_pool::ThreadPool;
-use std::{rc::Rc, thread, time::Duration};
+use std::{thread, time::Duration};
 
 const MAX_AUDIO_NOTES_PER_SECOND: usize = 40000;
 
@@ -30,7 +30,6 @@ impl Player {
     pub const DEFAULT_PLAYBACK_TIME: f32 = 8.0;
 
     pub fn new(
-        len: usize,
         note_event_sender: Sender<NoteEvent>,
         callback_timer: Arc<Atomic<InstantTime>>,
     ) -> Self {
@@ -161,7 +160,7 @@ impl Player {
     ///
     /// Panics if `arr.len()` is not equal to the capture's array length.
     pub fn copy_arr_to(&mut self, arr: &mut [usize]) {
-        if (self.capture.is_none()) {
+        if self.capture.is_none() {
             return;
         }
 
@@ -209,7 +208,7 @@ impl Player {
             };
 
             for &op in ops_last_frame.iter().take(audio_ops_this_frame) {
-                let (mut freq, mut amp, mut pan) = (0.5, 1.0, 0.0);
+                let (freq, amp, pan);
                 let mut osc = OscillatorType::default();
                 let mut second_event = None;
 
@@ -309,24 +308,10 @@ impl Player {
 
         Audio::note_to_freq(note)
     }
-
-    fn buffer_sample_offset(&self) -> u32 {
-        use std::sync::atomic::Ordering::Relaxed;
-
-        let samples_exact = self
-            .audio
-            .callback_timer
-            .load(Relaxed)
-            .elapsed()
-            .as_secs_f32()
-            * SAMPLE_RATE as f32;
-
-        samples_exact.round() as u32 % BUFFER_SIZE as u32
-    }
 }
 
 impl Updatable for Player {
-    fn update(&mut self, app: &App, update: UpdateData) {
+    fn update(&mut self, _: &App, update: UpdateData) {
         if !self.is_playing || self.capture.is_none() {
             return;
         }

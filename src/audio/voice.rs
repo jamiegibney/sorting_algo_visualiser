@@ -1,8 +1,7 @@
 use super::*;
 use envelope::AmpEnvelope;
-use nannou_audio::Buffer;
-use sine::{SineOsc, SineOscSimd};
-use tri::{TriOsc, TriOscSimd};
+use sine::SineOscSimd;
+use tri::TriOscSimd;
 
 /// The maximum number of polyphonic audio voices.
 pub const NUM_VOICES: usize = if cfg!(debug_assertions) { 512 } else { 2048 };

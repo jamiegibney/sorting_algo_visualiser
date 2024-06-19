@@ -1,7 +1,6 @@
 #![allow(clippy::suboptimal_flops)]
 
 use super::*;
-use nannou::{draw::background::new, prelude::*};
 use std::{
     f32::consts::{FRAC_PI_2, TAU},
     marker::PhantomData as PD,
@@ -12,10 +11,6 @@ pub const DEFAULT_RESOLUTION: usize = 256;
 pub const MAX_RESOLUTION: usize = 1 << 14; // 16384
 pub const CIRCLE_RADIUS: f32 = 300.0;
 
-// pub const WRITE_COLOR: Rgb<f32> =
-//     Rgb { red: 1.0, green: 1.0, blue: 1.0, standard: PD };
-// pub const READ_COLOR: Rgb<f32> =
-//     Rgb { red: 0.0, green: 0.8, blue: 1.0, standard: PD };
 pub const SWAP_COLOR: Rgb<f32> =
     Rgb { red: 0.9, green: 1.0, blue: 0.9, standard: PD };
 pub const COMPARE_TRUE_COLOR: Rgb<f32> =
@@ -142,7 +137,7 @@ impl ColorWheel {
 }
 
 impl Updatable for ColorWheel {
-    fn update(&mut self, app: &App, update: UpdateData) {
+    fn update(&mut self, _: &App, _: UpdateData) {
         self.clear_overlay();
 
         for &op in self.overlay_operations.iter() {
@@ -163,7 +158,7 @@ impl Updatable for ColorWheel {
                     self.overlay_colors[a] = Some(overlay);
                     self.overlay_colors[b] = Some(overlay);
                 }
-                SortOperation::Write { idx, value } => {
+                SortOperation::Write { idx, .. } => {
                     self.overlay_colors[idx] = Some(Overlay::Darken(0.7));
                 }
                 SortOperation::Read { idx } => {
@@ -175,14 +170,14 @@ impl Updatable for ColorWheel {
 }
 
 impl Drawable for ColorWheel {
-    fn draw(&self, draw: &Draw, update: UpdateData) {
+    fn draw(&self, draw: &Draw, _: UpdateData) {
         draw.translate(vec3(0.0, 50.0, 0.0))
             .mesh()
             .indexed_colored(
                 (0..self.resolution() * 3).map(|i| {
                     let color_idx = self.color_indices[i / 3];
 
-                    let mut color = self.overlay_colors[color_idx].map_or(
+                    let color = self.overlay_colors[color_idx].map_or(
                         self.colors[color_idx],
                         |o| match o {
                             Overlay::Override(c) => c,

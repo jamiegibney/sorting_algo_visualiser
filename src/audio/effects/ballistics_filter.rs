@@ -18,7 +18,7 @@ pub struct BallisticsFilter {
 
 impl BallisticsFilter {
     /// Creates a new `BallisticsFilter` which can store `num_channels` samples.
-    pub fn new(num_channels: usize, sample_rate: f32) -> Self {
+    pub fn new(sample_rate: f32) -> Self {
         Self {
             z1: SIMD_ZERO,
 

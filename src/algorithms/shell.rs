@@ -1,11 +1,11 @@
 use super::*;
 
 #[derive(Debug)]
-pub struct Shell {}
+pub struct Shell;
 
 impl Shell {
     pub const fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

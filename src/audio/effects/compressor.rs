@@ -18,13 +18,13 @@ pub struct Compressor {
 
 impl Compressor {
     /// Creates a new `Compressor` which can support `num_channels` channels.
-    pub fn new(num_channels: usize, sample_rate: f32) -> Self {
+    pub fn new(sample_rate: f32) -> Self {
         Self {
             sample_rate,
             threshold_db: 0.0,
             ratio: 1.0,
             knee_width: 0.0,
-            filter: BallisticsFilter::new(num_channels, sample_rate)
+            filter: BallisticsFilter::new(sample_rate)
                 .with_attack_time(DEFAULT_ATTACK_TIME)
                 .with_release_time(DEFAULT_RELEASE_TIME),
         }

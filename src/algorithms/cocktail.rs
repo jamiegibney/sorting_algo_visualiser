@@ -1,11 +1,11 @@
 use super::*;
 
 #[derive(Debug)]
-pub struct Cocktail {}
+pub struct Cocktail;
 
 impl Cocktail {
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

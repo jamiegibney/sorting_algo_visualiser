@@ -1,14 +1,11 @@
 #![allow(clippy::suboptimal_flops)]
 
-use std::{thread, time::Duration};
-
 use super::*;
 use crate::{prelude::*, thread_pool::ThreadPool};
-use nannou::prelude::*;
 use nannou_audio::Stream;
 
 pub struct Model {
-    window_id: WindowId,
+    _window_id: WindowId,
 
     current_algorithm: Arc<Atomic<SortingAlgorithm>>,
     previous_algorithm: Arc<Mutex<Option<SortingAlgorithm>>>,
@@ -43,7 +40,7 @@ pub struct Model {
 impl Model {
     /// Creates a new app model.
     pub fn new(app: &App) -> Self {
-        let window_id = app
+        let _window_id = app
             .new_window()
             .view(super::view)
             .title("Sorting Algorithms")
@@ -68,7 +65,7 @@ impl Model {
         let algo = Arc::new(Atomic::new(SortingAlgorithm::default()));
 
         Self {
-            window_id,
+            _window_id,
 
             process: Arc::new(Mutex::new(Process::new(Arc::clone(&algo)))),
             current_algorithm: algo,
@@ -78,7 +75,7 @@ impl Model {
             ui: Ui::new(),
             sort_arr: Arc::new(Mutex::new(SortArray::new(DEFAULT_RESOLUTION))),
             player: Arc::new(Mutex::new(Player::new(
-                DEFAULT_RESOLUTION, note_tx, audio_callback_timer,
+                note_tx, audio_callback_timer,
             ))),
 
             target_arr: (0..DEFAULT_RESOLUTION).collect(),

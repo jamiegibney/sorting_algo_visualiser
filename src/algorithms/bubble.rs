@@ -12,7 +12,7 @@ impl Bubble {
 impl SortProcessor for Bubble {
     fn process(&mut self, arr: &mut SortArray) {
         let n = arr.len();
-        let mut any_swapped = false;
+        let mut any_swapped;
 
         for i in 0..(n - 1) {
             any_swapped = false;

@@ -1,4 +1,4 @@
-#![allow(unused, clippy::wildcard_imports)]
+#![allow(clippy::wildcard_imports, clippy::needless_range_loop)]
 #![feature(portable_simd)]
 
 use mimalloc::MiMalloc;
@@ -57,7 +57,7 @@ fn generate_envelope_data() {
             start.as_ptr().cast::<u8>(),
             start.len() * std::mem::size_of::<f32>(),
         )
-    });
+    }).expect("failed to write envelope data");
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -74,8 +74,7 @@ pub trait Drawable: Updatable {
     fn draw(&self, draw: &Draw, update: UpdateData);
 }
 
-fn update(app: &App, model: &mut Model, update: Update) {
-    let update = &update;
+fn update(app: &App, model: &mut Model, _: Update) {
     model.update(app);
 }
 

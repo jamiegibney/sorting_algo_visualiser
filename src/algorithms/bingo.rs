@@ -36,7 +36,7 @@ impl SortProcessor for Bingo {
         let mut next_pos = 0;
 
         while bingo < next_bingo {
-            let mut start = next_pos;
+            let start = next_pos;
 
             for i in start..arr.len() {
                 if arr.read(i) == bingo {

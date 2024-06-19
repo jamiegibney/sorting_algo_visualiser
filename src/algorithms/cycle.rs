@@ -14,8 +14,6 @@ impl SortProcessor for Cycle {
         let n = arr.len();
 
         for start in 0..(n - 1) {
-            let item = arr.read(start);
-
             let mut pos = start;
 
             for i in (start + 1)..n {

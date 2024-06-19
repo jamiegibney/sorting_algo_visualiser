@@ -27,5 +27,3 @@ fn max_power(arr: &mut SortArray, base: usize) -> usize {
 
     a
 }
-
-

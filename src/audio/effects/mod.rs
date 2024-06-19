@@ -4,10 +4,12 @@ use super::*;
 use nannou_audio::Buffer;
 
 pub mod ballistics_filter;
+pub mod compressor;
 pub mod filter;
 
 pub use ballistics_filter::BallisticsFilter;
 pub use filter::{Filter, FilterType};
+pub use compressor::Compressor;
 
 /// Trait for SIMD audio processing effects, which *only* support two channels.
 pub trait SimdAudioEffect: Debug + Clone {

@@ -27,6 +27,7 @@ impl Bucket {
 }
 
 impl SortProcessor for Bucket {
+    #[allow(unused, unreachable_code)]
     fn process(&mut self, arr: &mut SortArray) {
         unimplemented!("this sort is a bit silly for this array, so is left out for now");
         let n = arr.len();

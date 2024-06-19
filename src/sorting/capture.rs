@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::rc::Rc;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SortData {
@@ -12,7 +11,7 @@ pub struct SortData {
 impl SortData {
     pub fn update(&mut self, op: SortOperation, rewind: bool) {
         match op {
-            SortOperation::Write { idx, value } => {
+            SortOperation::Write { .. } => {
                 if rewind {
                     self.writes -= 1;
                 }
@@ -20,7 +19,7 @@ impl SortData {
                     self.writes += 1;
                 }
             }
-            SortOperation::Read { idx } => {
+            SortOperation::Read { .. } => {
                 if rewind {
                     self.reads -= 1;
                 }
@@ -28,7 +27,7 @@ impl SortData {
                     self.reads += 1;
                 }
             }
-            SortOperation::Swap { a, b } => {
+            SortOperation::Swap { .. } => {
                 if rewind {
                     self.swaps -= 1;
                 }
@@ -36,7 +35,7 @@ impl SortData {
                     self.swaps += 1;
                 }
             }
-            SortOperation::Compare { a, b, res } => {
+            SortOperation::Compare { .. } => {
                 if rewind {
                     self.comparisons -= 1;
                 }
@@ -133,10 +132,9 @@ impl SortCapture {
         unimplemented!();
     }
 
+    /// Whether the capture has finished playback or not.
     pub fn is_done(&self) -> bool {
-        let res = self.cursor == self.operations.len();
-        // println!("done: {res}");
-        res
+        self.cursor == self.operations.len()
     }
 
     /// Returns the current progress of the sorting process as a value between
@@ -188,7 +186,7 @@ impl SortCapture {
     }
 
     pub fn reset_progress(&mut self) {
-        self.set_progress(0.0);
+        _ = self.set_progress(0.0);
         self.write_stack.clear();
         self.cursor = 0;
         self.cursor_last = 0;

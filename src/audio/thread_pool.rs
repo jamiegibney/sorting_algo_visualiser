@@ -3,10 +3,10 @@ use crate::thread_pool::PoolCreationError;
 use crossbeam_channel as cc;
 use parking_lot::Mutex;
 use std::{
-    io::{Error, Result as IoResult},
+    io::Result as IoResult,
     panic,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
+        atomic::{AtomicBool, Ordering::Relaxed},
         Arc,
     },
     thread::{self, JoinHandle},
@@ -51,7 +51,7 @@ impl Worker {
 
         let thread = builder.name(format!("audio voice thread #{id}")).spawn(
             move || {
-                priority::set_current_thread_priority(
+                _ = priority::set_current_thread_priority(
                     priority::ThreadPriority::Max,
                 );
 
@@ -70,6 +70,8 @@ impl Worker {
                     data.busy_flag.store(true, Relaxed);
                     data.queue_count.fetch_sub(1, Relaxed);
 
+                    // this may be used in future
+                    #[allow(unused_labels)]
                     'process: {
                         let mut next_event = data.note_receiver.try_recv().ok();
 

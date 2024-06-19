@@ -27,7 +27,7 @@ impl RadixLSDInPlace {
 
 impl SortProcessor for RadixLSDInPlace {
     fn process(&mut self, arr: &mut SortArray) {
-        let mut pos = 0;
+        let mut pos;
 
         let max_power = max_power(arr, self.base);
 
@@ -35,7 +35,7 @@ impl SortProcessor for RadixLSDInPlace {
             pos = 0;
             self.bins.fill(arr.len() - 1);
 
-            for i in 0..arr.len() {
+            for _ in 0..arr.len() {
                 let digit = get_digit(arr.read(pos), p, self.base);
 
                 if digit == 0 {
