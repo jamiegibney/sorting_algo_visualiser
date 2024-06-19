@@ -8,7 +8,7 @@ This app draws a colour wheel, which is made up of a variable number of segments
 
 The sorting operations (writes, swaps, comparisons, reads) are "recorded" and used to update the colour wheel display *and* send audio note messages. Up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised.
 
-The audio generation utilises SIMD and multi-threading optimisations to generate voices with SIMD operations in parallel on up to 16 threads. The audio FX processing (a high-pass filter and compressor) also use SIMD operations.
+The audio generation utilises SIMD and multi-threading optimisations to generate voices with SIMD operations in parallel on up to 16 threads. The audio FX processors (a high-pass filter and compressor) also use SIMD operations.
 
 The SIMD optimisation does not drastically improve performance, and is mainly used to handle stereo processing in single steps. The multi-threaded voice generation, however, improves audio performance by approximately 10x based on some rough tests.
 
