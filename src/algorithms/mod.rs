@@ -87,11 +87,6 @@ pub enum SortingAlgorithm {
     Timsort,
     QuickSort,
 
-    // TODO: none of the radix sorts are currently implemented. refer to this
-    // LSD sort:
-    // https://github.com/w0rthy/ArrayVisualizer/blob/master/src/array/visualizer/sort/RadixLSD.java
-    // and this bubble sort to understand the API:
-    // https://github.com/w0rthy/ArrayVisualizer/blob/master/src/array/visualizer/sort/BubbleSort.java
     RadixLSD2,
     RadixLSD5,
     RadixLSD10,
