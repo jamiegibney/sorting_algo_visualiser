@@ -14,15 +14,13 @@ Heavily inspired by w0rthy's [ArrayVisualiser](https://github.com/w0rthy/ArrayVi
 
 ## Building/running from source
 
-Due to the use of SIMD, this project requires the nightly Rust compiler when building from source.
-
 ```shell
 $ git clone https://github.com/jamiegibney/sorting_algo_visualiser.git
 $ cd sorting_algo_visualiser
-$ cargo +nightly run --release -- -Ctarget-cpu=native
+$ cargo +nightly run --release
 ```
 
-The `-Ctarget-cpu=native` flag is recommended for improved SIMD performance, but is not required.
+Due to the use of SIMD, this project requires the nightly Rust compiler when building from source.
 
 ## Keymap
 
