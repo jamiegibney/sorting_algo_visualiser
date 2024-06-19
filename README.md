@@ -4,7 +4,63 @@ A sorting algorithm "audio-visualiser", written in Rust and the [nannou](https:/
 
 This app draws a colour wheel, which is made up of a variable number of segments. These segments can be randomly shuffled, and then re-sorted via various different sorting algorithms.
 
-The sorting operations (writes, swaps, comparisons, reads) are tracked and used to update the colour wheel display *and* send messages to the audio thread, which can quantise note values to a musical scale, or simply map array positions to frequency. Up to 2048 audio voices are supported.
+The sorting operations (writes, swaps, comparisons, reads) are "recorded" and used to update the colour wheel display *and* send audio note messages. Up to 2048 audio voices are available, though this is only a hard limit that could certainly be raised.
+
+The audio generation utilises SIMD and multi-threading optimisations to generate voices with SIMD operations in parallel on up to 16 threads. The audio FX processing (a high-pass filter and compressor) also use SIMD operations. The SIMD optimisation does not drastically improve performance, but the voice generation parallelisation improves audio performance by approximately 10x (very non-scientific figure!).
+
+Due to the use of SIMD, this project requires the nightly Rust compiler.
+
+## Keymap
+
+Currently, the only way to interact with the program is via keymaps. A mouse-based UI is WIP.
+
+- `Space`: toggle algorithm playback (or restart playback if the end has been reached)
+- `Backspace` or `Delete`: stop and reset playback to the beginning
+- `Return`: cycle to the next algorithm, or hold Shift to cycle to the previous algorithm
+- `R`: "run" a sorting algorithm
+- `S`: "shuffle" the current wheel
+- `F`: "force-sort" the current wheel
+- `M`: toggle audio mute
+- `N`: "next" algorithm: this shuffles the current wheel, and then runs the next algorithm when done
+- `-`: decrease wheel resolution, i.e. the number of array elements
+- `+`: increase wheel resolution, i.e. the number of array elements
+- `,` or `<`: decrease playback speed
+- `.` or `>`: increase playback speed
+
+## Implemented sorting algorithms (in order)
+
+- Bogosort (the stupid sort)
+- Stooge sort
+- Gnome sort
+- Bubble sort
+- Selection sort
+- Insertion sort
+- Pancake sort
+- Shell sort
+- Comb sort
+- Cocktail sort
+- Bingo sort
+- Cycle sort
+- Counting sort
+- Pigeonhole sort
+- Merge sort
+- Heap sort
+- TimSort
+- QuickSort
+- Radix sorts:
+    - LSD (least significant digit), base 2
+    - LSD, base 5
+    - LSD, base 10
+    - LSD, base 32
+    - LSD, base 1000
+    - In-place LSD, base 2
+    - In-place LSD, base 10
+    - In-place LSD, base 32
+    - In-place LSD, base 1000
+    - MSD (most significant digit), base 10
+    - MSD (most significant digit), base 32
+    - MSD (most significant digit), base 1000
+- Sleep sort (currently not guaranteed to sort the array, just in here for fun)
 
 ## TODO
 
@@ -13,7 +69,6 @@ The sorting operations (writes, swaps, comparisons, reads) are tracked and used 
 - [ ] Fix sort operation slice bounds
 
 #### Refactors
-- [x] Prevent sending audio generation task to thread pool if it's not needed (the challenge is *how* to know when it's not needed).
 - [ ] Separate the sorting array to a separate type, which is held by a "manager" which offers methods like prepare, capture dumping, resizing etc. This prevents sorting algorithms from modifying the actual array beyond the usual sorting operations.
 - [ ] Better names for certain types/functions
 - [ ] Manage which audio threads receive which incoming events more intelligently.
