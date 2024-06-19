@@ -2,7 +2,7 @@
 
 [Full video](https://drive.google.com/file/d/1UTanxeJtD_La77ys0kDYRH2Z_1uQbJi4/view?usp=sharing)
 
-A sorting algorithm "audio-visualiser", written in Rust and the [nannou](https://github.com/nannou-org/nannou) library.
+A sorting algorithm "audio-visualiser", written in Rust and the [nannou](https://github.com/nannou-org/nannou) library. Heavily inspired by w0rthy's [ArrayVisualiser](https://github.com/w0rthy/ArrayVisualizer). Many of the sorting algorithm implementations were based on examples from [GeeksforGeeks](https://www.geeksforgeeks.org/sorting-algorithms/).
 
 This app draws a colour wheel, which is made up of a variable number of segments. These segments can be randomly shuffled, and then re-sorted via various different sorting algorithms.
 
