@@ -21,7 +21,7 @@ Currently, the only way to interact with the program is via keymaps. A mouse-bas
 - `S`: "shuffle" the current wheel
 - `F`: "force-sort" the current wheel
 - `M`: toggle audio mute
-- `N`: "next" algorithm: this shuffles the current wheel, and then runs the next algorithm when done
+- `N`: "next" algorithm: this shuffles the current wheel, and then runs the next algorithm when done (or press Shift-N to run the previous algorithm when done)
 - `-`: decrease wheel resolution, i.e. the number of array elements
 - `+`: increase wheel resolution, i.e. the number of array elements
 - `,` or `<`: decrease playback speed

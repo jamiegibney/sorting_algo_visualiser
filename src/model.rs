@@ -370,7 +370,12 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         Key::F => model.force_sort(),
         Key::M => model.toggle_audio_processing(),
         Key::N => {
-            model.next_algorithm();
+            if app.keys.mods.shift() {
+                model.previous_algorithm();
+            }
+            else {
+                model.next_algorithm();
+            }
             model.shuffle_and_sort();
         }
         _ => {}
