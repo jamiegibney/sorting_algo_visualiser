@@ -22,5 +22,9 @@ debug = "full"
 
 [profile.release]
 # This option is crucial in order to catch any sorting algorithms which may panic.
+lto = true
+debug = false
+# There's no reason that this can't be "symbols" if your linker supports it — mine unfortunately doesn't
+strip = "debuginfo"
 panic = "unwind"
 codegen-units = 1
