@@ -69,9 +69,9 @@ Currently, the only way to interact with the program is via keymaps. A mouse-bas
 ## TODO
 
 #### Fixes
-- [ ] Fix crash when resizing array during playback
-- [ ] Fix sort operation slice bounds
-- [ ] Fix cases where "Shuffling" text is not cleared but should be
+- [ ] Fix cases where "Shuffling" text is not cleared but should be ([#1](https://github.com/jamiegibney/sorting_algo_visualiser/issues/1))
+- [ ] Fix crash when resizing array during playback ([#2](https://github.com/jamiegibney/sorting_algo_visualiser/issues/2))
+- [ ] Fix sort operation slice bounds ([#3](https://github.com/jamiegibney/sorting_algo_visualiser/issues/3))
 
 #### Refactors
 - [ ] Separate the sorting array to a separate type, which is held by a "manager" which offers methods like prepare, capture dumping, resizing etc. This prevents sorting algorithms from modifying the actual array beyond the usual sorting operations.
