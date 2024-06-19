@@ -49,12 +49,13 @@ impl Model {
             .title("Sorting Algorithms")
             .key_pressed(key_pressed)
             .size(800, 800)
+            .resizable(false)
             .build()
             .expect("failed to initialize main window");
 
         let color_wheel = ColorWheel::new();
         let (note_tx, note_rx) =
-            bounded(if cfg!(debug_assertions) { 200 } else { 512 });
+            bounded(if cfg!(debug_assertions) { 96 } else { 512 });
 
         let audio_voice_counter = Arc::new(AtomicU32::new(0));
 
